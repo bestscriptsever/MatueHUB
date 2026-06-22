@@ -54,7 +54,9 @@ end
 -- [ BLACKLIST SYSTEM ]
 -- ============================================================
 local Blacklist = {
-    [9285955744] = true
+    [9285955744] = true, -- xdragon
+    [3818747986] = true, -- pecinha
+    [5100360957] = true  -- Removido da whitelist e banido
 }
 
 if Blacklist[player.UserId] then
@@ -67,14 +69,27 @@ end
 -- ============================================================
 local IDs_Permitidos = {
     [2049361108] = true, -- ADMIN EXCLUSIVO
-    [6178386075] = true,
-    [5100360957] = true,
-    [10519600803] = true,
-    [5491260413] = true,
-    [9476297444] = true,
-    [4392089033] = true
+    [6178386075] = true, -- hakin
+    [10519600803] = true, -- Daviferreira
+    [5491260413] = true, -- GUILHERME_0644
+    [9476297444] = true, -- GUILHERME123456G55
+    [4392089033] = true, -- Marivaldo
+    [8970860435] = true  -- Xdragon alt
 }
 
+if not IDs_Permitidos[player.UserId] then
+    player:Kick("Você não tem permissão para usar.")
+    return 
+end
+
+local IS_ADMIN = (player.UserId == 2049361108)
+
+if not IDs_Permitidos[player.UserId] then
+    player:Kick("Você não tem permissão para usar.")
+    return 
+end
+
+local IS_ADMIN = (player.UserId == 2049361108)
 if not IDs_Permitidos[player.UserId] then
     player:Kick("Você não tem permissão para usar.")
     return 

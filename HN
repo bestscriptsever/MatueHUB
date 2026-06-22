@@ -83,6 +83,7 @@ end
 local IDs_Permitidos = {
     [2049361108] = true, -- ADMIN / OWNER
     [6178386075] = true,
+    [4392089033] = true,
     [5100360957] = true,
     [10519600803] = true,
     [5491260413] = true,

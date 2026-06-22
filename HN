@@ -68,6 +68,7 @@ end
 local IDs_Permitidos = {
     [2049361108] = true, -- ADMIN EXCLUSIVO (VOCÊ)
     [6178386075] = true,
+    [8970860435] = true,
     [5100360957] = true,
     [10519600803] = true,
     [5491260413] = true,

@@ -12,7 +12,7 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 
 -- ============================================================
--- [ SUPABASE API CONNECTION - CORRIGIDO PARA EXECUTORES ]
+-- [ SUPABASE API CONNECTION ]
 -- ============================================================
 local SUPABASE_URL = "https://kvgkanxbluudsqzgbeam.supabase.co"
 local SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2Z2thbnhibHV1ZHNxemdiZWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNzMwMjgsImV4cCI6MjA5NzY0OTAyOH0.haMA6H8JDAejn3zwieEuDBX3c7bWdNT5x50xaNKxczM"
@@ -66,14 +66,13 @@ end
 -- [ ANTI-KICK & PROTEÇÕES ]
 -- ============================================================
 local IDs_Permitidos = {
-    [2049361108] = true, -- ADMIN EXCLUSIVO (VOCÊ)
+    [2049361108] = true, -- ADMIN EXCLUSIVO
     [6178386075] = true,
     [5100360957] = true,
     [10519600803] = true,
     [5491260413] = true,
     [9476297444] = true,
-    [4392089033] = true,
-    [8970860435] = true -- NOVO USUÁRIO PERMITIDO xdragon
+    [4392089033] = true
 }
 
 if not IDs_Permitidos[player.UserId] then
@@ -87,6 +86,7 @@ if not game:IsLoaded() then
     game.Loaded:Wait() 
 end
 
+_G.BypassAntiKick = false
 pcall(function()
     local hm = hookmetamethod or hook_metamethod
     local nc = getnamecallmethod or get_namecall_method
@@ -95,6 +95,9 @@ pcall(function()
         oldNamecall = hm(game, "__namecall", function(self, ...)
             local method = nc()
             if self == player and (method == "Kick" or method == "kick") then 
+                if _G.BypassAntiKick then
+                    return oldNamecall(self, ...)
+                end
                 return 
             end
             return oldNamecall(self, ...)
@@ -131,7 +134,7 @@ _G.Aimlock_Script_Versao = (_G.Aimlock_Script_Versao or 0) + 1
 local minhaVersao = _G.Aimlock_Script_Versao
 
 -- ============================================================
--- [ TEMA VISUAL PREMIUM ROXO (NOVO!) ]
+-- [ TEMA VISUAL PREMIUM ROXO ]
 -- ============================================================
 local Theme = {
     Background = Color3.fromRGB(15, 10, 20),
@@ -378,24 +381,20 @@ local function ShowGiantWarning(message)
 end
 
 -- ============================================================
--- [ SUPABASE REAL-TIME POLLING LOOP ]
+-- [ SUPABASE REAL-TIME POLLING LOOP - FAST DELAY ]
 -- ============================================================
 task.spawn(function()
-    while task.wait(3) do
+    while task.wait(1) do 
         if _G.Aimlock_Script_Versao ~= minhaVersao then break end
         
         pcall(function()
-            -- 1. Força a verificação da presença para atualizar a lista de quem tá online
             local getRes = SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "GET")
-            
             if getRes and type(getRes) == "table" and #getRes > 0 then
-                -- Atualiza Last Seen se ele já existe
                 SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "PATCH", { 
                     last_seen = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                     username = player.Name
                 })
             else
-                -- Registra ele na DB pela primeira vez se não existir
                 SupabaseRequest("/rest/v1/users", "POST", { 
                     userid = tostring(player.UserId), 
                     username = player.Name, 
@@ -404,20 +403,20 @@ task.spawn(function()
                 })
             end
             
-            -- 2. Verifica se VOCÊ tomou KICK pelo botão do painel Admin
             local checkKick = SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId) .. "&select=is_kicked", "GET")
             if checkKick and type(checkKick) == "table" and checkKick[1] and checkKick[1].is_kicked == true then
                 SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "DELETE")
+                _G.BypassAntiKick = true
                 player:Kick("\nMATUE HUB - KICK ADMINISTRATIVO\n\nVocê foi expulso do script permanentemente por um Admin.")
             end
 
-            -- 3. Verifica Mensagens de Aviso Gigante
             local res = SupabaseRequest("/rest/v1/announcements?userid=eq." .. tostring(player.UserId) .. "&select=*", "GET")
             if res and type(res) == "table" and #res > 0 then
                 for _, cmd in ipairs(res) do
                     if cmd.type == "kick" then
                         SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
                         SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "DELETE")
+                        _G.BypassAntiKick = true
                         player:Kick("\nMATUE HUB - KICK ADMINISTRATIVO\n\n" .. tostring(cmd.message))
                     elseif cmd.type == "warn" then
                         ShowGiantWarning(tostring(cmd.message))
@@ -430,7 +429,7 @@ task.spawn(function()
 end)
 
 -- ============================================================
--- [ CRIAÇÃO DA ESTRUTURA CORE DA UI 100% REFEITA & ROBUST ]
+-- [ CRIAÇÃO DA ESTRUTURA CORE DA UI ]
 -- ============================================================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "MatueHub_Premium"
@@ -1360,6 +1359,61 @@ local function CreateMobileVisToggle(parentTab, titleText, btnKey)
 end
 
 -- ============================================================
+-- [ NOVO ESP PLAYER DO XYRO HUB (VERMELHO) ]
+-- ============================================================
+local espHighlights = {}
+local espConn = nil
+
+local function clearESPHighlights()
+    for _, h in ipairs(espHighlights) do
+        pcall(function() h:Destroy() end)
+    end
+    espHighlights = {}
+end
+
+local function applyESPToPlayer(plr)
+    if plr == player then return end
+    local char = plr.Character
+    if not char then return end
+    if char:FindFirstChild("_matueESP") then return end
+    local h = Instance.new("Highlight")
+    h.Name = "_matueESP"
+    h.FillColor = Color3.fromRGB(255, 0, 0)
+    h.OutlineColor = Color3.fromRGB(255, 255, 255)
+    h.FillTransparency = 0.5
+    h.OutlineTransparency = 0
+    h.Adornee = char
+    h.Parent = char
+    table.insert(espHighlights, h)
+end
+
+LogicActions.ESP = function()
+    if State.Toggles.ESP then
+        clearESPHighlights()
+        for _, plr in ipairs(Players:GetPlayers()) do
+            pcall(function() applyESPToPlayer(plr) end)
+        end
+        if espConn then espConn:Disconnect() end
+        espConn = RunService.Heartbeat:Connect(function()
+            if not State.Toggles.ESP then return end
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr ~= player then
+                    pcall(function()
+                        local char = plr.Character
+                        if char and not char:FindFirstChild("_matueESP") then
+                            applyESPToPlayer(plr)
+                        end
+                    end)
+                end
+            end
+        end)
+    else
+        if espConn then espConn:Disconnect(); espConn = nil end
+        clearESPHighlights()
+    end
+end
+
+-- ============================================================
 -- [ GERENCIADOR GLOBAL DE PROXIMITY PROMPT ]
 -- ============================================================
 local cachedPrompts = {}
@@ -1730,21 +1784,13 @@ LogicActions.AutoRight = function()
     end
 end
 
+-- ============================================================
+-- [ NOVO AUTO BAT DO XYRO HUB (PREDITIVO E VOADOR) ]
+-- ============================================================
 local autoBatEquippedThisRun = false
 local _autoBatTarget = nil
 local _autoBatLastScan = 0
-local AUTO_BAT_SPEED = 58
-local AUTO_BAT_DIST = 2.5
-local AUTO_BAT_TURN_SPEED = 285
-local AUTO_BAT_MAX_TURN_RATE = 28
-local AUTO_BAT_VERT_BASE = 52
-local AUTO_BAT_VERT_SCALE = 4.0
-local AUTO_BAT_VERT_MAX = 180
-local STOP_RADIUS = 1.2
-local MOVING_THRESHOLD = 1.0
-local FRONT_OFFSET = 8.0
-local VERTICAL_OFFSET_UP = 5.0
-local VERTICAL_OFFSET_DOWN = -3.0
+local BAT_AIMBOT_SPEED = 58
 
 local function getAutoBatTarget()
     local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -1763,7 +1809,10 @@ local function getAutoBatTarget()
             local tHum = plr.Character:FindFirstChildOfClass("Humanoid")
             if tRoot and tHum and tHum.Health > 0 then
                 local dist = (tRoot.Position - root.Position).Magnitude
-                if dist < minDist then minDist = dist closest = tRoot end
+                if dist < minDist then 
+                    minDist = dist
+                    closest = tRoot 
+                end
             end
         end
     end
@@ -1781,12 +1830,16 @@ LogicActions.AutoBat = function()
             if hum2 then hum2.AutoRotate = true end
         end
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then hrp.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity * 0.3 hrp.AssemblyAngularVelocity = Vector3.zero end
+        if hrp then 
+            hrp.AssemblyLinearVelocity = hrp.AssemblyLinearVelocity * 0.3 
+            hrp.AssemblyAngularVelocity = Vector3.zero 
+        end
     end
 end
 
-RunService.Heartbeat:Connect(function()
-    if respawnPause or _G.Aimlock_Script_Versao ~= minhaVersao or not State.Toggles.AutoBat then return end
+RunService.RenderStepped:Connect(function()
+    if not State.Toggles.AutoBat then return end
+    if respawnPause or _G.Aimlock_Script_Versao ~= minhaVersao then return end
     
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -1797,8 +1850,10 @@ RunService.Heartbeat:Connect(function()
         autoBatEquippedThisRun = true
         if not char:FindFirstChildOfClass("Tool") then
             local bp = player:FindFirstChildOfClass("Backpack") or player:FindFirstChild("Backpack")
-            local bpBat = bp and bp:FindFirstChild("Bat")
-            if bpBat then pcall(function() hum:EquipTool(bpBat) end) end
+            for _, name in ipairs({"Bat","Slap","Iron Slap","Gold Slap","Diamond Slap","Emerald Slap","Ruby Slap","Dark Matter Slap","Flame Slap","Nuclear Slap","Galaxy Slap","Glitched Slap"}) do
+                local t = char:FindFirstChild(name) or (bp and bp:FindFirstChild(name))
+                if t and t:IsA("Tool") then pcall(function() hum:EquipTool(t) end); break end
+            end
         end
     end
     
@@ -1806,61 +1861,39 @@ RunService.Heartbeat:Connect(function()
     
     if target then
         local targetVel = target.AssemblyLinearVelocity
-        local tFlatVel = Vector3.new(targetVel.X, 0, targetVel.Z)
-        local isMoving = tFlatVel.Magnitude > MOVING_THRESHOLD
-        local prediction = targetVel * math.clamp(targetVel.Magnitude / 130, 0.05, 0.15)
-        local aimTargetPos = Vector3.new(target.Position.X + prediction.X, target.Position.Y, target.Position.Z + prediction.Z)
+        local myPos = root.Position
+        local targetPos = target.Position
+        
+        local predictPos = targetPos + targetVel * 0.10 + target.CFrame.LookVector * 0.2
+        local direction = predictPos - myPos
+        local flatDir = Vector3.new(direction.X, 0, direction.Z)
+        if flatDir.Magnitude > 0 then flatDir = flatDir.Unit else flatDir = Vector3.zero end
         
         hum.AutoRotate = false
         
-        local flatDir = Vector3.new(aimTargetPos.X - root.Position.X, 0, aimTargetPos.Z - root.Position.Z)
-        if flatDir.Magnitude > 0.01 then
-            local awayDir = -flatDir.Unit
-            local awayYaw = math.deg(math.atan2(-awayDir.X, -awayDir.Z))
-            local yawDelta = (awayYaw - root.Orientation.Y + 180) % 360 - 180
-            local yawRate = math.clamp(math.rad(yawDelta) * AUTO_BAT_TURN_SPEED, -AUTO_BAT_MAX_TURN_RATE, AUTO_BAT_MAX_TURN_RATE)
-            root.AssemblyAngularVelocity = Vector3.new(0, yawRate, 0)
-        else
-            root.AssemblyAngularVelocity = Vector3.zero
+        local desiredHeight = targetPos.Y + 2.5
+        local yVel = (desiredHeight - myPos.Y) * 8 + targetVel.Y * 0.5
+        if hum.FloorMaterial ~= Enum.Material.Air then yVel = math.max(yVel, 8) end
+        yVel = math.clamp(yVel, -35, 45)
+        
+        root.AssemblyLinearVelocity = root.AssemblyLinearVelocity:Lerp(Vector3.new(flatDir.X * BAT_AIMBOT_SPEED, yVel, flatDir.Z * BAT_AIMBOT_SPEED), 0.5)
+        
+        local predictTime = math.clamp(targetVel.Magnitude / 150, 0.05, 0.15)
+        local predictedPos = targetPos + targetVel * predictTime
+        local toPredict = predictedPos - myPos
+        if toPredict.Magnitude > 0.1 then
+            local goalCF = CFrame.lookAt(myPos, predictedPos)
+            local diffCF = root.CFrame:Inverse() * goalCF
+            local rx, ry, rz = diffCF:ToEulerAnglesXYZ()
+            rx = math.clamp(rx, -1.2, 1.2); ry = math.clamp(ry, -1.2, 1.2); rz = math.clamp(rz, -1.2, 1.2)
+            root.AssemblyAngularVelocity = root.CFrame:VectorToWorldSpace(Vector3.new(rx * 18, ry * 18, rz * 18))
         end
         
-        local verticalOffset = 0
-        if targetVel.Y > 0.5 then verticalOffset = VERTICAL_OFFSET_UP elseif targetVel.Y < -0.5 then verticalOffset = VERTICAL_OFFSET_DOWN end
-        
-        local standPos
-        if isMoving then
-            local moveDir = tFlatVel.Unit
-            standPos = Vector3.new(target.Position.X + moveDir.X * FRONT_OFFSET, target.Position.Y + verticalOffset, target.Position.Z + moveDir.Z * FRONT_OFFSET)
-        else
-            standPos = Vector3.new(aimTargetPos.X - flatDir.Unit.X * AUTO_BAT_DIST, target.Position.Y + verticalOffset, aimTargetPos.Z - flatDir.Unit.Z * AUTO_BAT_DIST)
+        local dist = (target.Position - myPos).Magnitude
+        if dist <= 8 then
+            local bat = char:FindFirstChildOfClass("Tool")
+            if bat then pcall(function() bat:Activate() end) end
         end
-        
-        local hDiff = Vector3.new(standPos.X - root.Position.X, 0, standPos.Z - root.Position.Z)
-        local hDist = hDiff.Magnitude
-        local yDiff = standPos.Y - root.Position.Y
-        
-        local hVel
-        if hDist < STOP_RADIUS then
-            hVel = Vector3.new(root.AssemblyLinearVelocity.X * 0.6, 0, root.AssemblyLinearVelocity.Z * 0.6)
-        else
-            local speedScale = math.clamp(hDist / (STOP_RADIUS * 3), 0.2, 1.0)
-            local hDir = hDiff.Unit
-            hVel = hDir * (AUTO_BAT_SPEED * speedScale)
-        end
-        
-        local vVel
-        if math.abs(yDiff) > 0.15 then
-            local dynVert = math.clamp(AUTO_BAT_VERT_BASE + math.abs(yDiff) * AUTO_BAT_VERT_SCALE, AUTO_BAT_VERT_BASE, AUTO_BAT_VERT_MAX)
-            vVel = Vector3.new(0, math.sign(yDiff) * dynVert, 0)
-        else
-            vVel = Vector3.new(0, root.AssemblyLinearVelocity.Y * 0.5, 0)
-        end
-        
-        root.AssemblyLinearVelocity = hVel + vVel
-        if hDiff.Magnitude > 0.5 then hum:Move(hDiff.Unit, false) end
-        
-        local batTool = char:FindFirstChildOfClass("Tool")
-        if batTool and (batTool.Name:lower():find("bat") or batTool.Name:lower():find("slap")) then pcall(function() batTool:Activate() end) end
     else
         hum.AutoRotate = true
         root.AssemblyAngularVelocity = Vector3.zero

@@ -1,10 +1,3 @@
--- ==============================================================================
--- MATUE HUB PREMIUM - MASTER SCRIPT (SINGLE FILE EDITION)
--- ==============================================================================
--- Tema: Neon Aqua / Cyberpunk Ice
--- Sistemas: Crazed Duels, Drop Brainrot, Anti Ragdoll, Supabase Admin Real-Time
--- ==============================================================================
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -18,20 +11,18 @@ local CoreGui = game:GetService("CoreGui")
 
 local player = Players.LocalPlayer
 
--- ==============================================================================
--- [ BYPASS DE KICK PARA O SISTEMA DE ADMIN ]
--- ==============================================================================
--- Permite que o Admin Kicke o jogador, mas bloqueia os kicks do jogo
+-- ============================================================
+-- [ BYPASS INTERNO DE KICK PARA ADMIN ]
+-- ============================================================
 local AllowInternalKick = false
-
 local function ExecuteKick(message)
     AllowInternalKick = true
     player:Kick(message)
 end
 
--- ==============================================================================
--- [ CONEXÃO SUPABASE API ]
--- ==============================================================================
+-- ============================================================
+-- [ SUPABASE API CONNECTION - FIXED NIL ERRORS ]
+-- ============================================================
 local SUPABASE_URL = "https://kvgkanxbluudsqzgbeam.supabase.co"
 local SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt2Z2thbnhibHV1ZHNxemdiZWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNzMwMjgsImV4cCI6MjA5NzY0OTAyOH0.haMA6H8JDAejn3zwieEuDBX3c7bWdNT5x50xaNKxczM"
 
@@ -42,7 +33,6 @@ local function SupabaseRequest(endpoint, method, payload)
         ["Content-Type"] = "application/json",
         ["Prefer"] = "return=representation"
     }
-    
     local success, result = pcall(function()
         return HttpService:RequestAsync({
             Url = SUPABASE_URL .. endpoint,
@@ -56,34 +46,31 @@ local function SupabaseRequest(endpoint, method, payload)
         local decSuccess, decoded = pcall(function() 
             return HttpService:JSONDecode(result.Body) 
         end)
-        
         if decSuccess then 
             return decoded 
         end
     end
-    
     return nil
 end
 
--- ==============================================================================
--- [ SISTEMA DE BLACKLIST ]
--- ==============================================================================
+-- ============================================================
+-- [ BLACKLIST SYSTEM ]
+-- ============================================================
 local Blacklist = {
     [9285955744] = true
 }
 
 if Blacklist[player.UserId] then
-    ExecuteKick("Você foi blacklistado do Matue Hub. ID: " .. tostring(player.UserId))
+    ExecuteKick("Você foi blacklistado. ID: " .. tostring(player.UserId))
     return
 end
 
--- ==============================================================================
--- [ ANTI-KICK METATABLE & PROTEÇÕES ]
--- ==============================================================================
+-- ============================================================
+-- [ ANTI-KICK & PROTEÇÕES ]
+-- ============================================================
 local IDs_Permitidos = {
-    [2049361108] = true, -- ADMIN / OWNER
+    [2049361108] = true, -- ADMIN
     [6178386075] = true,
-    [4392089033] = true,
     [5100360957] = true,
     [10519600803] = true,
     [5491260413] = true,
@@ -92,7 +79,7 @@ local IDs_Permitidos = {
 }
 
 if not IDs_Permitidos[player.UserId] then
-    ExecuteKick("Acesso Negado: Você não tem permissão para usar o Matue Hub.")
+    ExecuteKick("Você não tem permissão para usar.")
     return 
 end
 
@@ -105,18 +92,15 @@ end
 pcall(function()
     local hm = hookmetamethod or hook_metamethod
     local nc = getnamecallmethod or get_namecall_method
-    
     if hm and nc then
         local oldNamecall
         oldNamecall = hm(game, "__namecall", function(self, ...)
             local method = nc()
-            
             if self == player and (method == "Kick" or method == "kick") then 
                 if not AllowInternalKick then
                     return 
                 end
             end
-            
             return oldNamecall(self, ...)
         end)
     end
@@ -132,46 +116,38 @@ task.spawn(function()
     end
 end)
 
--- Limpeza absoluta de interfaces duplicadas
 local uiParent = game:GetService("CoreGui") or player:WaitForChild("PlayerGui")
-local uiNamesToClean = {"MatueHub_Premium", "MatueHub_Mobile", "MatueHub_Warning", "StealProgressBar"}
-
+local uisToClear = {"MatueHub_Premium", "MatueHub_Mobile", "MatueHub_Warning", "StealProgressBar"}
 for _, v in pairs(uiParent:GetChildren()) do
-    for _, name in ipairs(uiNamesToClean) do
-        if v.Name == name then 
-            pcall(function() 
-                v:Destroy() 
-            end) 
+    for _, nm in ipairs(uisToClear) do
+        if v.Name == nm then
+            pcall(function() v:Destroy() end)
         end
     end
 end
 
 local function Notificar(titulo, texto)
     pcall(function() 
-        StarterGui:SetCore("SendNotification", {
-            Title = titulo, 
-            Text = texto, 
-            Duration = 3
-        }) 
+        StarterGui:SetCore("SendNotification", {Title = titulo, Text = texto, Duration = 3}) 
     end)
 end
 
 _G.Aimlock_Script_Versao = (_G.Aimlock_Script_Versao or 0) + 1
 local minhaVersao = _G.Aimlock_Script_Versao
 
--- ==============================================================================
--- [ NOVO TEMA VISUAL DIFERENCIADO: NEON AQUA / CYBERPUNK ICE ]
--- ==============================================================================
+-- ============================================================
+-- [ TEMA VISUAL PREMIUM CIANO / NEON AQUA ]
+-- ============================================================
 local Theme = {
-    Background = Color3.fromRGB(10, 12, 16),       -- Fundo azul/cinza profundíssimo
-    Surface = Color3.fromRGB(18, 20, 28),          -- Superfície azul metálica escura
-    SurfaceHover = Color3.fromRGB(28, 32, 45),     -- Hover mais claro
-    Primary = Color3.fromRGB(0, 210, 255),         -- Ciano Neon / Aqua Brilhante
-    PrimaryDark = Color3.fromRGB(0, 140, 180),     -- Ciano escurecido
-    Text = Color3.fromRGB(245, 250, 255),          -- Texto quase branco com toque gelo
-    TextMuted = Color3.fromRGB(130, 140, 160),     -- Texto mutado acinzentado
-    Border = Color3.fromRGB(35, 40, 55),           -- Bordas azuladas
-    Danger = Color3.fromRGB(255, 65, 80)           -- Rosa/Vermelho Neon
+    Background = Color3.fromRGB(10, 14, 20),
+    Surface = Color3.fromRGB(15, 22, 30),
+    SurfaceHover = Color3.fromRGB(20, 35, 45),
+    Primary = Color3.fromRGB(0, 220, 255), 
+    PrimaryDark = Color3.fromRGB(0, 150, 180),
+    Text = Color3.fromRGB(240, 250, 255),
+    TextMuted = Color3.fromRGB(140, 160, 180),
+    Border = Color3.fromRGB(30, 50, 80),
+    Danger = Color3.fromRGB(255, 50, 80)
 }
 
 local Anim = {
@@ -180,15 +156,12 @@ local Anim = {
     Bounce = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 }
 
--- ==============================================================================
--- [ ESTADOS, VARIÁVEIS E PERSISTÊNCIA ]
--- ==============================================================================
+-- ============================================================
+-- [ ESTADOS E PERSISTÊNCIA ]
+-- ============================================================
 local ConfigFolder = "MatueHub_Configs"
-
 if makefolder and not isfolder(ConfigFolder) then 
-    pcall(function() 
-        makefolder(ConfigFolder) 
-    end) 
+    pcall(function() makefolder(ConfigFolder) end) 
 end
 
 local AutoSavePath = ConfigFolder .. "/AutoSave.json"
@@ -196,83 +169,38 @@ local isDataLoaded = false
 
 local State = {
     Toggles = {
-        AutoBat = false, 
-        BatCounter = false, 
-        MedusaCounter = false, 
-        Macro = false,
-        Velocity = false, 
-        AntiRagdoll = false, 
-        InfJump = false, 
-        Unwalk = false,
-        AutoSteal = false, 
-        ESP = false, 
-        Stats = true, 
-        Accs = false,
-        MobileMode = false, 
-        MobGridMode = false, 
-        InstaPrompt = false, 
-        AutoInteract = false,
-        LockMobileBtns = false, 
-        AutoLeft = false, 
-        AutoRight = false, 
-        CarryMode = false,
+        AutoBat = false, BatCounter = false, MedusaCounter = false, Macro = false,
+        Velocity = false, AntiRagdoll = false, InfJump = false, Unwalk = false,
+        AutoSteal = false, ESP = false, Stats = true, Accs = false,
+        MobileMode = false, MobGridMode = false, InstaPrompt = false, AutoInteract = false,
+        LockMobileBtns = false, AutoLeft = false, AutoRight = false, CarryMode = false,
         AutoSpeedSwitch = false
     },
     Binds = {
-        AutoBat = Enum.KeyCode.X, 
-        Macro = Enum.KeyCode.B, 
-        Velocity = Enum.KeyCode.Q, 
-        InfJump = Enum.KeyCode.F, 
-        AntiRagdoll = Enum.KeyCode.C, 
-        AutoSteal = Enum.KeyCode.U,
-        Drop = Enum.KeyCode.P, 
-        InstaReset = Enum.KeyCode.T, 
-        TPDown = Enum.KeyCode.G,
-        InstaPrompt = Enum.KeyCode.Unknown, 
-        AutoInteract = Enum.KeyCode.Unknown,
-        AutoLeft = Enum.KeyCode.Unknown, 
-        AutoRight = Enum.KeyCode.Unknown, 
-        CarryMode = Enum.KeyCode.Unknown
+        AutoBat = Enum.KeyCode.X, Macro = Enum.KeyCode.B, Velocity = Enum.KeyCode.Q, 
+        InfJump = Enum.KeyCode.F, AntiRagdoll = Enum.KeyCode.C, AutoSteal = Enum.KeyCode.U,
+        Drop = Enum.KeyCode.P, InstaReset = Enum.KeyCode.T, TPDown = Enum.KeyCode.G,
+        InstaPrompt = Enum.KeyCode.Unknown, AutoInteract = Enum.KeyCode.Unknown,
+        AutoLeft = Enum.KeyCode.Unknown, AutoRight = Enum.KeyCode.Unknown, CarryMode = Enum.KeyCode.Unknown
     },
     Values = {
-        TpHeight = -7, 
-        SpeedBoost = 53, 
-        CarryMode = 29, 
-        StealRadius = 60, 
-        StealDuration = 1.4, 
-        JumpMode = "Hold", 
-        AutoTpDownDelay = 2,
-        MobSize = 55, 
-        MobTransp = 0.15, 
-        MobSpacing = 12, 
-        PromptRange = 20, 
-        InterfaceScale = 100
+        TpHeight = -7, SpeedBoost = 53, CarryMode = 29, 
+        StealRadius = 60, StealDuration = 1.4, JumpMode = "Hold", AutoTpDownDelay = 2,
+        MobSize = 55, MobTransp = 0.15, MobSpacing = 12, 
+        PromptRange = 20, InterfaceScale = 100
     },
     MobileVis = {
-        AutoBat = true, 
-        Macro = true, 
-        Velocity = true, 
-        InfJump = true, 
-        AntiRagdoll = true, 
-        AutoSteal = true, 
-        Drop = true, 
-        InstaReset = true, 
-        TPDown = true,
-        InstaPrompt = true, 
-        AutoInteract = true, 
-        AutoLeft = true, 
-        AutoRight = true, 
-        CarryMode = true
+        AutoBat = true, Macro = true, Velocity = true, InfJump = true, 
+        AntiRagdoll = true, AutoSteal = true, Drop = true, InstaReset = true, TPDown = true,
+        InstaPrompt = true, AutoInteract = true, AutoLeft = true, AutoRight = true, CarryMode = true
     },
     MobilePositions = {},
     IsMinimized = false
 }
 
 local POS_WAYPOINTS = {
-    L1 = Vector3.new(-476.48, -6.28, 92.73), 
-    L2 = Vector3.new(-483.12, -4.95, 94.80),
-    R1 = Vector3.new(-476.16, -6.52, 25.62), 
-    R2 = Vector3.new(-483.04, -5.09, 23.14),
+    L1 = Vector3.new(-476.48, -6.28, 92.73), L2 = Vector3.new(-483.12, -4.95, 94.80),
+    R1 = Vector3.new(-476.16, -6.52, 25.62), R2 = Vector3.new(-483.04, -5.09, 23.14),
 }
 
 local LogicActions = {}      
@@ -284,10 +212,7 @@ local mobileBtnsObjects = {}
 local getconnections = getconnections or get_signal_cons or getconnects or function() return {} end
 
 local function SaveSystem()
-    if not isDataLoaded then 
-        return 
-    end 
-    
+    if not isDataLoaded then return end 
     local dataToSave = { 
         Toggles = State.Toggles, 
         Binds = {}, 
@@ -296,39 +221,28 @@ local function SaveSystem()
         MobilePositions = State.MobilePositions,
         MobileVis = State.MobileVis
     }
-    
     for k, v in pairs(State.Binds) do 
         dataToSave.Binds[k] = v.Name 
     end
-    
-    pcall(function() 
-        writefile(AutoSavePath, HttpService:JSONEncode(dataToSave)) 
-    end)
+    pcall(function() writefile(AutoSavePath, HttpService:JSONEncode(dataToSave)) end)
 end
 
 task.spawn(function()
     while task.wait(2) do
-        if _G.Aimlock_Script_Versao ~= minhaVersao then 
-            break 
-        end
+        if _G.Aimlock_Script_Versao ~= minhaVersao then break end
         SaveSystem()
     end
 end)
 
 Players.PlayerRemoving:Connect(function(plr)
     if plr == player then 
-        pcall(function() 
-            SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "DELETE") 
-        end)
+        pcall(function() SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "DELETE") end)
         SaveSystem() 
     end
 end)
 
 local function formatKeyName(key)
-    if not key then 
-        return "..." 
-    end
-    
+    if not key then return "..." end
     local name = key.Name
     name = name:gsub("DPad", "D-"):gsub("Button", "Btn"):gsub("Control", "Ctrl"):gsub("Shift", "Shft")
     return string.sub(name, 1, 6)
@@ -343,44 +257,26 @@ local function atualizarTextosDosBotoes()
 end
 
 local function listarConfigs()
-    if not listfiles then 
-        return {} 
-    end
-    
+    if not listfiles then return {} end
     local files = {}
     pcall(function()
         for _, path in ipairs(listfiles(ConfigFolder)) do
             local file = string.match(path, "([^/\\]+)%.json$")
-            if file and file ~= "AutoSave.json" then 
-                table.insert(files, file) 
-            end
+            if file and file ~= "AutoSave.json" then table.insert(files, file) end
         end
     end)
     return files
 end
 
 local function salvarConfig(nomeArquivo)
-    if not writefile then 
-        return Notificar("Erro", "Falha de compatibilidade: o executor não suporta salvar arquivos.") 
-    end
-    
-    if nomeArquivo == "" or nomeArquivo:lower() == "textbox" then 
-        nomeArquivo = "padrao" 
-    end
-    
+    if not writefile then return Notificar("Erro", "Falha de compatibilidade.") end
+    if nomeArquivo == "" or nomeArquivo:lower() == "textbox" then nomeArquivo = "padrao" end
     local cfgs = listarConfigs()
     local jaExiste = false
-    
     for _, v in ipairs(cfgs) do 
-        if v:lower() == nomeArquivo:lower() then 
-            jaExiste = true 
-            break 
-        end 
+        if v:lower() == nomeArquivo:lower() then jaExiste = true break end 
     end
-    
-    if not jaExiste and #cfgs >= 5 then 
-        return Notificar("Limite Atingido", "Delete uma config para salvar (Max: 5).") 
-    end
+    if not jaExiste and #cfgs >= 5 then return Notificar("Limite", "Delete uma config para salvar (Max: 5).") end
     
     local dataToSave = { 
         Binds = {}, 
@@ -388,70 +284,35 @@ local function salvarConfig(nomeArquivo)
         MobilePositions = State.MobilePositions, 
         MobileVis = State.MobileVis 
     }
+    for k, v in pairs(State.Binds) do dataToSave.Binds[k] = v.Name end
     
-    for k, v in pairs(State.Binds) do 
-        dataToSave.Binds[k] = v.Name 
-    end
-    
-    local success = pcall(function() 
-        writefile(ConfigFolder.."/"..nomeArquivo..".json", HttpService:JSONEncode(dataToSave)) 
-    end)
-    
-    if success then 
-        Notificar("Sucesso", "Configuração ["..nomeArquivo.."] foi salva!") 
-    end
+    local success = pcall(function() writefile(ConfigFolder.."/"..nomeArquivo..".json", HttpService:JSONEncode(dataToSave)) end)
+    if success then Notificar("Save", "["..nomeArquivo.."] salva!") end
 end
 
 local function carregarConfig(nomeArquivo)
-    if not readfile or not isfile(ConfigFolder.."/"..nomeArquivo..".json") then 
-        return 
-    end
-    
-    local success, result = pcall(function() 
-        return HttpService:JSONDecode(readfile(ConfigFolder.."/"..nomeArquivo..".json")) 
-    end)
-    
+    if not readfile or not isfile(ConfigFolder.."/"..nomeArquivo..".json") then return end
+    local success, result = pcall(function() return HttpService:JSONDecode(readfile(ConfigFolder.."/"..nomeArquivo..".json")) end)
     if success and type(result) == "table" then
         if result.Values then
             for k, v in pairs(result.Values) do 
                 State.Values[k] = v 
-                if type(InputUpdaters[k]) == "function" then 
-                    InputUpdaters[k](v) 
-                end
+                if type(InputUpdaters[k]) == "function" then InputUpdaters[k](v) end
             end
         end
-        
         if result.Binds then
-            for k, v in pairs(result.Binds) do 
-                pcall(function() 
-                    State.Binds[k] = Enum.KeyCode[v] 
-                end) 
-            end
+            for k, v in pairs(result.Binds) do pcall(function() State.Binds[k] = Enum.KeyCode[v] end) end
         end
-        
         if result.MobilePositions then
-            for k, v in pairs(result.MobilePositions) do 
-                State.MobilePositions[k] = v 
-            end
+            for k, v in pairs(result.MobilePositions) do State.MobilePositions[k] = v end
         end
-        
         if result.MobileVis then
-            for k, v in pairs(result.MobileVis) do 
-                State.MobileVis[k] = v 
-            end
+            for k, v in pairs(result.MobileVis) do State.MobileVis[k] = v end
         end
-        
         atualizarTextosDosBotoes()
-        
-        if type(LogicActions.MobileMode) == "function" then 
-            LogicActions.MobileMode() 
-        end
-        
-        if type(LogicActions.InterfaceScale) == "function" then 
-            LogicActions.InterfaceScale() 
-        end
-        
-        Notificar("Sucesso", "Configuração ["..nomeArquivo.."] carregada!")
+        if type(LogicActions.MobileMode) == "function" then LogicActions.MobileMode() end
+        if type(LogicActions.InterfaceScale) == "function" then LogicActions.InterfaceScale() end
+        Notificar("Load", "["..nomeArquivo.."] carregada!")
         SaveSystem()
     end
 end
@@ -459,24 +320,15 @@ end
 local function deletarConfig(nomeArquivo)
     if not delfile then return end
     local path = ConfigFolder.."/"..nomeArquivo..".json"
-    if isfile(path) then 
-        pcall(function() 
-            delfile(path) 
-        end)
-        Notificar("Apagada", "A configuração foi excluída com sucesso.") 
-    end
+    if isfile(path) then pcall(function() delfile(path) end); Notificar("Delete", "Apagada.") end
 end
 
--- ==============================================================================
--- [ SISTEMA DE AVISOS GIGANTES COM BLUR (TELA INTEIRA) ]
--- ==============================================================================
+-- ============================================================
+-- [ AVISOS GIGANTES COM BLUR EM TEMPO REAL ]
+-- ============================================================
 local function ShowGiantWarning(message)
-    if uiParent:FindFirstChild("MatueHub_Warning") then 
-        uiParent.MatueHub_Warning:Destroy() 
-    end
-    if Lighting:FindFirstChild("MatueWarningBlur") then 
-        Lighting.MatueWarningBlur:Destroy() 
-    end
+    if uiParent:FindFirstChild("MatueHub_Warning") then uiParent.MatueHub_Warning:Destroy() end
+    if Lighting:FindFirstChild("MatueWarningBlur") then Lighting.MatueWarningBlur:Destroy() end
 
     local blur = Instance.new("BlurEffect")
     blur.Name = "MatueWarningBlur"
@@ -498,7 +350,7 @@ local function ShowGiantWarning(message)
     bg.BorderSizePixel = 0
 
     local warnText = Instance.new("TextLabel")
-    warnText.Name = "WarningText"
+    warnText.Name = "WarnLabel"
     warnText.Parent = bg
     warnText.Size = UDim2.new(0.9, 0, 0.4, 0)
     warnText.Position = UDim2.new(0.05, 0, 0.4, 0)
@@ -515,40 +367,31 @@ local function ShowGiantWarning(message)
     warnText.TextStrokeTransparency = 1
     
     local uiScale = Instance.new("UIScale")
-    uiScale.Name = "TextScale"
+    uiScale.Name = "Scale"
     uiScale.Parent = warnText
     uiScale.Scale = 0.5
 
-    -- Animações de Entrada (Crazed Duels Style)
     TweenService:Create(blur, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = 25}):Play()
     TweenService:Create(bg, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0.45}):Play()
     TweenService:Create(warnText, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {TextTransparency = 0, TextStrokeTransparency = 0}):Play()
     TweenService:Create(uiScale, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Scale = 1}):Play()
 
-    -- Delay e Animação de Saída
     task.delay(4.5, function()
         if not blur or not warnGui then return end
-        
         local twBlur = TweenService:Create(blur, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Size = 0})
         TweenService:Create(bg, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {BackgroundTransparency = 1}):Play()
         TweenService:Create(warnText, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {TextTransparency = 1, TextStrokeTransparency = 1}):Play()
         TweenService:Create(uiScale, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Scale = 0.5}):Play()
-        
         twBlur:Play()
         twBlur.Completed:Wait()
-        
-        pcall(function()
-            warnGui:Destroy()
-            blur:Destroy()
-        end)
+        pcall(function() warnGui:Destroy(); blur:Destroy() end)
     end)
 end
 
--- ==============================================================================
--- [ SUPABASE REAL-TIME POLLING LOOP (ADMIN COMANDOS) ]
--- ==============================================================================
+-- ============================================================
+-- [ SUPABASE REAL-TIME POLLING LOOP ]
+-- ============================================================
 task.spawn(function()
-    -- Registra o usuário localmente no banco para o Cross-Server funcionar
     pcall(function()
         SupabaseRequest("/rest/v1/users", "POST", {
             userid = tostring(player.UserId),
@@ -557,36 +400,25 @@ task.spawn(function()
     end)
     
     while task.wait(1.5) do
-        if _G.Aimlock_Script_Versao ~= minhaVersao then 
-            break 
-        end
-        
+        if _G.Aimlock_Script_Versao ~= minhaVersao then break end
         pcall(function()
-            -- Busca na tabela "announcements" se tem comandos pra mim
             local res = SupabaseRequest("/rest/v1/announcements?userid=eq." .. tostring(player.UserId) .. "&select=*", "GET")
-            
-            if res and type(res) == "table" and #res > 0 then
+            if type(res) == "table" and #res > 0 then
                 for _, cmd in ipairs(res) do
                     local typeAction = cmd.type
                     local msg = cmd.message or ""
                     
-                    -- Deleta o comando do banco imediatamente para não executar 2 vezes
                     SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
                     
                     if typeAction == "kick" then
-                        -- Remove o registro online dele
                         SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "DELETE")
-                        -- Executa a função de Kick bypassando o Anti-Kick
                         ExecuteKick("\nMATUE HUB - KICK ADMINISTRATIVO\n\n" .. msg)
-                        
                     elseif typeAction == "warn" then
                         ShowGiantWarning(msg)
-                        
                     elseif typeAction == "kill" then
                         if player.Character and player.Character:FindFirstChild("Humanoid") then
                             player.Character.Humanoid.Health = 0
                         end
-                        
                     elseif typeAction == "freeze" then
                         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                             player.Character.HumanoidRootPart.Anchored = true
@@ -594,7 +426,6 @@ task.spawn(function()
                                 player.Character.Humanoid.WalkSpeed = 0
                             end
                         end
-                        
                     elseif typeAction == "unfreeze" then
                         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                             player.Character.HumanoidRootPart.Anchored = false
@@ -602,10 +433,8 @@ task.spawn(function()
                                 player.Character.Humanoid.WalkSpeed = 16
                             end
                         end
-                        
                     elseif typeAction == "fling" then
                         if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                            -- Força um fling absurdo pra matar o cliente fisicamente se necessário
                             player.Character.HumanoidRootPart.Velocity = Vector3.new(0, 50000, 0)
                         end
                     end
@@ -615,9 +444,9 @@ task.spawn(function()
     end
 end)
 
--- ==============================================================================
+-- ============================================================
 -- [ CRIAÇÃO DA ESTRUTURA CORE DA UI ]
--- ==============================================================================
+-- ============================================================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "MatueHub_Premium"
 screenGui.ResetOnSpawn = false
@@ -633,7 +462,7 @@ mobileGui.IgnoreGuiInset = true
 mobileGui.Parent = uiParent
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainBackground"
+mainFrame.Name = "MainFrame"
 mainFrame.Parent = screenGui
 mainFrame.Size = UDim2.new(0, 560, 0, 440) 
 mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -643,19 +472,19 @@ mainFrame.BorderSizePixel = 0
 mainFrame.ClipsDescendants = true
 
 local uiCornerMain = Instance.new("UICorner")
-uiCornerMain.Name = "MainCorner"
+uiCornerMain.Name = "Corner"
 uiCornerMain.Parent = mainFrame
 uiCornerMain.CornerRadius = UDim.new(0, 10)
 
 local mainStroke = Instance.new("UIStroke")
-mainStroke.Name = "MainStroke"
+mainStroke.Name = "Stroke"
 mainStroke.Parent = mainFrame
 mainStroke.Color = Theme.Border
 mainStroke.Thickness = 1.5
 
--- [ SISTEMA DE PARTÍCULAS DINÂMICAS NEON AQUA NO FUNDO ]
+-- [ SISTEMA DE PARTÍCULAS AZUL NEON ]
 local particleContainer = Instance.new("Frame")
-particleContainer.Name = "ParticleContainer"
+particleContainer.Name = "Particles"
 particleContainer.Parent = mainFrame
 particleContainer.Size = UDim2.new(1, 0, 1, 0)
 particleContainer.BackgroundTransparency = 1
@@ -664,14 +493,11 @@ particleContainer.ClipsDescendants = true
 
 task.spawn(function()
     while task.wait(0.6) do
-        if _G.Aimlock_Script_Versao ~= minhaVersao then 
-            break 
-        end
+        if _G.Aimlock_Script_Versao ~= minhaVersao then break end
         if mainFrame.Visible and not State.IsMinimized then
             local p = Instance.new("Frame")
             p.Name = "Particle"
             p.Parent = particleContainer
-            
             local size = math.random(3, 8)
             p.Size = UDim2.new(0, size, 0, size)
             p.Position = UDim2.new(math.random(), 0, 1.1, 0)
@@ -689,38 +515,23 @@ task.spawn(function()
                 Position = UDim2.new(p.Position.X.Scale, 0, -0.2, 0)
             })
             tw:Play()
-            
-            task.delay(speed, function() 
-                pcall(function() 
-                    p:Destroy() 
-                end) 
-            end)
+            task.delay(speed, function() pcall(function() p:Destroy() end) end)
         end
     end
 end)
 
 local mainUIScale = Instance.new("UIScale")
-mainUIScale.Name = "MainScale"
+mainUIScale.Name = "Scale"
 mainUIScale.Parent = mainFrame
 mainUIScale.Scale = State.Values.InterfaceScale / 100
 
--- [ SISTEMA DE ARRASTAR UI (DRAG) ]
-local dragToggle = false
-local dragStart = nil
-local startPos = nil
-
+local dragToggle, dragStart, startPos = false, nil, nil
 local function updateDrag(input)
     local delta = input.Position - dragStart
     local currentScale = mainUIScale.Scale
-    mainFrame.Position = UDim2.new(
-        startPos.X.Scale, 
-        startPos.X.Offset + (delta.X / currentScale), 
-        startPos.Y.Scale, 
-        startPos.Y.Offset + (delta.Y / currentScale)
-    )
+    mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + (delta.X / currentScale), startPos.Y.Scale, startPos.Y.Offset + (delta.Y / currentScale))
 end
 
--- [ TOPBAR DA INTERFACE ]
 local topBar = Instance.new("Frame")
 topBar.Name = "TopBar"
 topBar.Parent = mainFrame
@@ -734,7 +545,6 @@ topBar.InputBegan:Connect(function(input)
         dragToggle = true
         dragStart = input.Position
         startPos = mainFrame.Position
-        
         input.Changed:Connect(function() 
             if input.UserInputState == Enum.UserInputState.End then 
                 dragToggle = false 
@@ -750,7 +560,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Name = "HubTitle"
+titleLabel.Name = "Title"
 titleLabel.Parent = topBar
 titleLabel.Size = UDim2.new(0, 200, 1, 0)
 titleLabel.Position = UDim2.new(0, 15, 0, 0)
@@ -763,7 +573,7 @@ titleLabel.ZIndex = 2
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 local statsDisplay = Instance.new("TextLabel")
-statsDisplay.Name = "StatsDisplay"
+statsDisplay.Name = "Stats"
 statsDisplay.Parent = topBar
 statsDisplay.Size = UDim2.new(1, -70, 1, 0)
 statsDisplay.Position = UDim2.new(0, 10, 0, 0)
@@ -776,7 +586,7 @@ statsDisplay.ZIndex = 2
 statsDisplay.TextXAlignment = Enum.TextXAlignment.Right
 
 local minBtn = Instance.new("TextButton")
-minBtn.Name = "MinimizeButton"
+minBtn.Name = "MinBtn"
 minBtn.Parent = topBar
 minBtn.Size = UDim2.new(0, 26, 0, 26)
 minBtn.Position = UDim2.new(1, -38, 0.5, -13)
@@ -815,7 +625,7 @@ minBtn.MouseLeave:Connect(function()
 end)
 
 local divider = Instance.new("Frame")
-divider.Name = "TopDivider"
+divider.Name = "Divider"
 divider.Parent = mainFrame
 divider.Size = UDim2.new(1, 0, 0, 1)
 divider.Position = UDim2.new(0, 0, 0, 45)
@@ -824,7 +634,7 @@ divider.ZIndex = 2
 divider.BorderSizePixel = 0
 
 local contentWrapper = Instance.new("Frame")
-contentWrapper.Name = "ContentWrapper"
+contentWrapper.Name = "Content"
 contentWrapper.Parent = mainFrame
 contentWrapper.Size = UDim2.new(1, 0, 1, -46)
 contentWrapper.Position = UDim2.new(0, 0, 0, 46)
@@ -867,15 +677,10 @@ contentArea.BackgroundTransparency = 1
 contentArea.ZIndex = 2
 contentArea.ClipsDescendants = true
 
--- ==============================================================================
--- [ FUNÇÕES DE CRIAÇÃO DA INTERFACE (UI BUILDERS) ]
--- ==============================================================================
-
 local tabs = {}
-
 local function CreateTab(name)
     local btn = Instance.new("TextButton")
-    btn.Name = "TabBtn_" .. name
+    btn.Name = "Tab_" .. name
     btn.Parent = tabMenu
     btn.Size = UDim2.new(1, 0, 0, 38)
     btn.BackgroundColor3 = Theme.Surface
@@ -908,7 +713,6 @@ local function CreateTab(name)
     scroll.Visible = false
     scroll.ZIndex = 2
     
-    -- Correção definitiva do Bug de opções invisíveis (Matemática Automática manual)
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.None
     scroll.CanvasSize = UDim2.new(0, 0, 0, 0) 
     
@@ -935,40 +739,23 @@ local function CreateTab(name)
 
     btn.MouseEnter:Connect(function() 
         if not scroll.Visible then 
-            TweenService:Create(btn, Anim.Fast, {
-                BackgroundColor3 = Theme.SurfaceHover, 
-                TextColor3 = Theme.Text
-            }):Play() 
+            TweenService:Create(btn, Anim.Fast, {BackgroundColor3 = Theme.SurfaceHover, TextColor3 = Theme.Text}):Play() 
         end 
     end)
-    
     btn.MouseLeave:Connect(function() 
         if not scroll.Visible then 
-            TweenService:Create(btn, Anim.Fast, {
-                BackgroundColor3 = Theme.Surface, 
-                TextColor3 = Theme.TextMuted
-            }):Play() 
+            TweenService:Create(btn, Anim.Fast, {BackgroundColor3 = Theme.Surface, TextColor3 = Theme.TextMuted}):Play() 
         end 
     end)
 
     btn.Activated:Connect(function()
         for _, t in ipairs(tabs) do 
-            TweenService:Create(t.btn, Anim.Fast, {
-                BackgroundColor3 = Theme.Surface, 
-                TextColor3 = Theme.TextMuted
-            }):Play()
-            
+            TweenService:Create(t.btn, Anim.Fast, {BackgroundColor3 = Theme.Surface, TextColor3 = Theme.TextMuted}):Play()
             local str = t.btn:FindFirstChild("Stroke")
-            if str then 
-                str.Transparency = 1 
-            end
+            if str then str.Transparency = 1 end
             t.scroll.Visible = false 
         end
-        
-        TweenService:Create(btn, Anim.Smooth, {
-            BackgroundColor3 = Theme.Primary, 
-            TextColor3 = Theme.Background
-        }):Play()
+        TweenService:Create(btn, Anim.Smooth, {BackgroundColor3 = Theme.Primary, TextColor3 = Theme.Background}):Play()
         btnStroke.Transparency = 0
         scroll.Visible = true
     end)
@@ -976,7 +763,6 @@ local function CreateTab(name)
     return scroll
 end
 
--- INICIALIZANDO AS ABAS
 local tabCombat = CreateTab("COMBAT")
 local tabMovement = CreateTab("MOVEMENT")
 local tabFarm = CreateTab("FARM")
@@ -989,75 +775,37 @@ if IS_ADMIN then
     tabAdmin = CreateTab("ADMIN")
 end
 
--- Selecionando a primeira aba por padrão ao abrir o Hub
 if tabs[1] and tabs[1].btn then
     tabs[1].btn.BackgroundColor3 = Theme.Primary
     tabs[1].btn.TextColor3 = Theme.Background
     local str = tabs[1].btn:FindFirstChild("Stroke")
-    if str then 
-        str.Transparency = 0 
-    end
+    if str then str.Transparency = 0 end
     tabs[1].scroll.Visible = true
 end
 
--- ==============================================================================
--- [ SISTEMA DE MINIMIZAR E DOUBLE CLICK NAS STATUS (HUD) ]
--- ==============================================================================
 local lastMaximizedPos = UDim2.new(0.5, 0, 0.5, 0)
-
 local function ExecMinimize(forceState)
     if forceState ~= nil then 
         State.IsMinimized = forceState 
     else 
         State.IsMinimized = not State.IsMinimized 
     end
-    
     SaveSystem()
     
     if State.IsMinimized then
-        if mainFrame.Size.Y.Offset > 100 then 
-            lastMaximizedPos = mainFrame.Position 
-        end
-        
+        if mainFrame.Size.Y.Offset > 100 then lastMaximizedPos = mainFrame.Position end
         contentWrapper.Visible = false
         minBtn.Visible = false
-        
-        TweenService:Create(mainFrame, Anim.Smooth, { 
-            Size = UDim2.new(0, 120, 0, 35), 
-            Position = UDim2.new(0, 50, 0.5, 0) 
-        }):Play()
-        
-        TweenService:Create(titleLabel, Anim.Fast, {
-            TextTransparency = 1
-        }):Play()
-        
-        TweenService:Create(statsDisplay, Anim.Smooth, { 
-            Size = UDim2.new(1, 0, 1, 0), 
-            Position = UDim2.new(0, 0, 0, 0), 
-            TextColor3 = Theme.Primary 
-        }):Play()
+        TweenService:Create(mainFrame, Anim.Smooth, { Size = UDim2.new(0, 120, 0, 35), Position = UDim2.new(0, 50, 0.5, 0) }):Play()
+        TweenService:Create(titleLabel, Anim.Fast, {TextTransparency = 1}):Play()
+        TweenService:Create(statsDisplay, Anim.Smooth, { Size = UDim2.new(1, 0, 1, 0), Position = UDim2.new(0, 0, 0, 0), TextColor3 = Theme.Primary }):Play()
         statsDisplay.TextXAlignment = Enum.TextXAlignment.Center
     else
         minBtn.Visible = true
-        
-        TweenService:Create(mainFrame, Anim.Smooth, { 
-            Size = UDim2.new(0, 560, 0, 440), 
-            Position = lastMaximizedPos 
-        }):Play()
-        
-        task.delay(0.2, function() 
-            contentWrapper.Visible = true 
-        end)
-        
-        TweenService:Create(titleLabel, Anim.Fast, {
-            TextTransparency = 0
-        }):Play()
-        
-        TweenService:Create(statsDisplay, Anim.Smooth, { 
-            Size = UDim2.new(1, -70, 1, 0), 
-            Position = UDim2.new(0, 10, 0, 0), 
-            TextColor3 = Theme.TextMuted 
-        }):Play()
+        TweenService:Create(mainFrame, Anim.Smooth, { Size = UDim2.new(0, 560, 0, 440), Position = lastMaximizedPos }):Play()
+        task.delay(0.2, function() contentWrapper.Visible = true end)
+        TweenService:Create(titleLabel, Anim.Fast, {TextTransparency = 0}):Play()
+        TweenService:Create(statsDisplay, Anim.Smooth, { Size = UDim2.new(1, -70, 1, 0), Position = UDim2.new(0, 10, 0, 0), TextColor3 = Theme.TextMuted }):Play()
         statsDisplay.TextXAlignment = Enum.TextXAlignment.Right
     end
 end
@@ -1065,14 +813,12 @@ minBtn.Activated:Connect(function() ExecMinimize() end)
 
 local startClick = 0
 local startClickPos = Vector3.new()
-
 statsDisplay.InputBegan:Connect(function(input) 
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
         startClick = tick()
         startClickPos = input.Position 
     end 
 end)
-
 statsDisplay.InputEnded:Connect(function(input) 
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then 
         if tick() - startClick < 0.4 and State.IsMinimized then 
@@ -1084,10 +830,6 @@ statsDisplay.InputEnded:Connect(function(input)
 end)
 
 local listeningAction = nil
-
--- ==============================================================================
--- [ FUNÇÕES DE CONSTRUÇÃO DE BOTÕES E OPÇÕES DA INTERFACE ]
--- ==============================================================================
 
 local function CreateToggle(parentTab, titleText, keyName, stateKey)
     local frame = Instance.new("Frame")
@@ -1151,7 +893,7 @@ local function CreateToggle(parentTab, titleText, keyName, stateKey)
     dotCorner.CornerRadius = UDim.new(1, 0)
 
     local overlay = Instance.new("TextButton")
-    overlay.Name = "OverlayBtn"
+    overlay.Name = "Btn"
     overlay.Parent = frame
     overlay.Size = UDim2.new(1, 0, 1, 0)
     overlay.BackgroundTransparency = 1
@@ -1170,7 +912,6 @@ local function CreateToggle(parentTab, titleText, keyName, stateKey)
             TweenService:Create(fStroke, Anim.Smooth, {Color = Theme.Border}):Play()
             TweenService:Create(title, Anim.Smooth, {TextColor3 = Theme.Text}):Play()
         end
-        
         local mobBtn = mobileBtnsObjects[stateKey]
         if mobBtn then
             if isActive then
@@ -1186,44 +927,30 @@ local function CreateToggle(parentTab, titleText, keyName, stateKey)
             end
         end
     end
-    
-    if not VisualUpdaters[stateKey] then 
-        VisualUpdaters[stateKey] = {} 
-    end
+    if not VisualUpdaters[stateKey] then VisualUpdaters[stateKey] = {} end
     table.insert(VisualUpdaters[stateKey], VisualUpdate)
 
     overlay.Activated:Connect(function()
         State.Toggles[stateKey] = not State.Toggles[stateKey]
         if type(VisualUpdaters[stateKey]) == "table" then 
             for _, fn in ipairs(VisualUpdaters[stateKey]) do 
-                if type(fn) == "function" then 
-                    fn(State.Toggles[stateKey]) 
-                end 
+                if type(fn) == "function" then fn(State.Toggles[stateKey]) end 
             end 
         end
-        
-        if type(LogicActions[stateKey]) == "function" then 
-            LogicActions[stateKey]() 
-        end
+        if type(LogicActions[stateKey]) == "function" then LogicActions[stateKey]() end
         SaveSystem()
-        
         local t = TweenService:Create(frame, Anim.Fast, {Size = UDim2.new(1, -24, 0, 46)})
         t:Play()
         t.Completed:Wait()
         TweenService:Create(frame, Anim.Bounce, {Size = UDim2.new(1, -20, 0, 48)}):Play()
     end)
     
-    overlay.MouseEnter:Connect(function() 
-        TweenService:Create(frame, Anim.Fast, {BackgroundColor3 = Theme.SurfaceHover}):Play() 
-    end)
-    
-    overlay.MouseLeave:Connect(function() 
-        TweenService:Create(frame, Anim.Fast, {BackgroundColor3 = Theme.Surface}):Play() 
-    end)
+    overlay.MouseEnter:Connect(function() TweenService:Create(frame, Anim.Fast, {BackgroundColor3 = Theme.SurfaceHover}):Play() end)
+    overlay.MouseLeave:Connect(function() TweenService:Create(frame, Anim.Fast, {BackgroundColor3 = Theme.Surface}):Play() end)
 
     if keyName then
         local bindBtn = Instance.new("TextButton")
-        bindBtn.Name = "BindButton"
+        bindBtn.Name = "Bind"
         bindBtn.Parent = frame
         bindBtn.Size = UDim2.new(0, 30, 0, 24)
         bindBtn.AnchorPoint = Vector2.new(1, 0.5)
@@ -1249,9 +976,7 @@ local function CreateToggle(parentTab, titleText, keyName, stateKey)
         table.insert(allKeybindButtonsList, {btn = bindBtn, name = keyName})
 
         bindBtn.Activated:Connect(function()
-            if listeningAction then 
-                listeningAction.btn.Text = formatKeyName(State.Binds[listeningAction.name]) 
-            end
+            if listeningAction then listeningAction.btn.Text = formatKeyName(State.Binds[listeningAction.name]) end
             bindBtn.Text = "..."
             listeningAction = { name = keyName, btn = bindBtn }
             TweenService:Create(bindBtn, Anim.Bounce, {Size = UDim2.new(0, 36, 0, 28)}):Play()
@@ -1261,7 +986,7 @@ end
 
 local function CreateButton(parentTab, titleText, keyName, callbackFunc)
     local frame = Instance.new("Frame")
-    frame.Name = "ButtonFrame_" .. titleText
+    frame.Name = "Button_" .. titleText
     frame.Parent = parentTab
     frame.Size = UDim2.new(1, -20, 0, 48)
     frame.BackgroundColor3 = Theme.Surface
@@ -1293,7 +1018,7 @@ local function CreateButton(parentTab, titleText, keyName, callbackFunc)
     title.TextXAlignment = Enum.TextXAlignment.Left
 
     local overlay = Instance.new("TextButton")
-    overlay.Name = "OverlayBtn"
+    overlay.Name = "Btn"
     overlay.Parent = frame
     overlay.Size = UDim2.new(1, 0, 1, 0)
     overlay.BackgroundTransparency = 1
@@ -1301,26 +1026,19 @@ local function CreateButton(parentTab, titleText, keyName, callbackFunc)
     overlay.ZIndex = 50
 
     overlay.Activated:Connect(function()
-        if type(callbackFunc) == "function" then 
-            callbackFunc() 
-        end
+        if type(callbackFunc) == "function" then callbackFunc() end
         local t = TweenService:Create(frame, Anim.Fast, {Size = UDim2.new(1, -24, 0, 46)})
         t:Play()
         t.Completed:Wait()
         TweenService:Create(frame, Anim.Bounce, {Size = UDim2.new(1, -20, 0, 48)}):Play()
     end)
     
-    overlay.MouseEnter:Connect(function() 
-        TweenService:Create(frame, Anim.Fast, {BackgroundColor3 = Theme.SurfaceHover}):Play() 
-    end)
-    
-    overlay.MouseLeave:Connect(function() 
-        TweenService:Create(frame, Anim.Fast, {BackgroundColor3 = Theme.Surface}):Play() 
-    end)
+    overlay.MouseEnter:Connect(function() TweenService:Create(frame, Anim.Fast, {BackgroundColor3 = Theme.SurfaceHover}):Play() end)
+    overlay.MouseLeave:Connect(function() TweenService:Create(frame, Anim.Fast, {BackgroundColor3 = Theme.Surface}):Play() end)
 
     if keyName then
         local bindBtn = Instance.new("TextButton")
-        bindBtn.Name = "BindButton"
+        bindBtn.Name = "Bind"
         bindBtn.Parent = frame
         bindBtn.Size = UDim2.new(0, 30, 0, 24)
         bindBtn.AnchorPoint = Vector2.new(1, 0.5)
@@ -1346,9 +1064,7 @@ local function CreateButton(parentTab, titleText, keyName, callbackFunc)
         table.insert(allKeybindButtonsList, {btn = bindBtn, name = keyName})
 
         bindBtn.Activated:Connect(function()
-            if listeningAction then 
-                listeningAction.btn.Text = formatKeyName(State.Binds[listeningAction.name]) 
-            end
+            if listeningAction then listeningAction.btn.Text = formatKeyName(State.Binds[listeningAction.name]) end
             bindBtn.Text = "..."
             listeningAction = { name = keyName, btn = bindBtn }
             TweenService:Create(bindBtn, Anim.Bounce, {Size = UDim2.new(0, 36, 0, 28)}):Play()
@@ -1358,7 +1074,7 @@ end
 
 local function CreateInput(parentTab, titleText, valueKey)
     local frame = Instance.new("Frame")
-    frame.Name = "InputFrame_" .. valueKey
+    frame.Name = "Input_" .. valueKey
     frame.Parent = parentTab
     frame.Size = UDim2.new(1, -20, 0, 42)
     frame.BackgroundColor3 = Theme.Surface
@@ -1389,7 +1105,7 @@ local function CreateInput(parentTab, titleText, valueKey)
     title.TextXAlignment = Enum.TextXAlignment.Left
 
     local input = Instance.new("TextBox")
-    input.Name = "InputField"
+    input.Name = "Box"
     input.Parent = frame
     input.Size = UDim2.new(0, 60, 0, 24)
     input.AnchorPoint = Vector2.new(1, 0.5)
@@ -1413,9 +1129,7 @@ local function CreateInput(parentTab, titleText, valueKey)
     inputStroke.Parent = input
     inputStroke.Color = Theme.Border
     
-    InputUpdaters[valueKey] = function(v) 
-        input.Text = tostring(v) 
-    end
+    InputUpdaters[valueKey] = function(v) input.Text = tostring(v) end
 
     input.FocusLost:Connect(function()
         local val = tonumber(input.Text)
@@ -1425,16 +1139,13 @@ local function CreateInput(parentTab, titleText, valueKey)
             input.Text = tostring(State.Values[valueKey]) 
         end
         SaveSystem()
-        
-        if type(LogicActions[valueKey]) == "function" then 
-            LogicActions[valueKey]() 
-        end
+        if type(LogicActions[valueKey]) == "function" then LogicActions[valueKey]() end
     end)
 end
 
 local function CreateCycleButton(parentTab, titleText, valueKey, options)
     local frame = Instance.new("Frame")
-    frame.Name = "CycleFrame_" .. valueKey
+    frame.Name = "Cycle_" .. valueKey
     frame.Parent = parentTab
     frame.Size = UDim2.new(1, -20, 0, 42)
     frame.BackgroundColor3 = Theme.Surface
@@ -1465,7 +1176,7 @@ local function CreateCycleButton(parentTab, titleText, valueKey, options)
     title.TextXAlignment = Enum.TextXAlignment.Left
 
     local btn = Instance.new("TextButton")
-    btn.Name = "CycleBtn"
+    btn.Name = "Btn"
     btn.Parent = frame
     btn.Size = UDim2.new(0, 80, 0, 24)
     btn.AnchorPoint = Vector2.new(1, 0.5)
@@ -1488,9 +1199,7 @@ local function CreateCycleButton(parentTab, titleText, valueKey, options)
     btnStroke.Parent = btn
     btnStroke.Color = Theme.Border
 
-    InputUpdaters[valueKey] = function(v) 
-        btn.Text = tostring(v) 
-    end
+    InputUpdaters[valueKey] = function(v) btn.Text = tostring(v) end
 
     local index = 1
     for i, v in ipairs(options) do 
@@ -1502,24 +1211,18 @@ local function CreateCycleButton(parentTab, titleText, valueKey, options)
 
     btn.Activated:Connect(function()
         index = index + 1
-        if index > #options then 
-            index = 1 
-        end
-        
+        if index > #options then index = 1 end
         State.Values[valueKey] = options[index]
         btn.Text = options[index]
         SaveSystem()
-        
         TweenService:Create(btn, Anim.Bounce, {Size = UDim2.new(0, 86, 0, 28)}):Play()
-        task.delay(0.15, function() 
-            TweenService:Create(btn, Anim.Smooth, {Size = UDim2.new(0, 80, 0, 24)}):Play() 
-        end)
+        task.delay(0.15, function() TweenService:Create(btn, Anim.Smooth, {Size = UDim2.new(0, 80, 0, 24)}):Play() end)
     end)
 end
 
 local function CreateSlider(parentTab, titleText, valueKey, minVal, maxVal, step)
     local frame = Instance.new("Frame")
-    frame.Name = "SliderFrame_" .. valueKey
+    frame.Name = "Slider_" .. valueKey
     frame.Parent = parentTab
     frame.Size = UDim2.new(1, -20, 0, 52)
     frame.BackgroundColor3 = Theme.Surface
@@ -1551,7 +1254,7 @@ local function CreateSlider(parentTab, titleText, valueKey, minVal, maxVal, step
     title.TextXAlignment = Enum.TextXAlignment.Left
 
     local valLabel = Instance.new("TextLabel")
-    valLabel.Name = "ValueLabel"
+    valLabel.Name = "Val"
     valLabel.Parent = frame
     valLabel.Size = UDim2.new(0.4, 0, 0, 20)
     valLabel.Position = UDim2.new(0.6, -15, 0, 5)
@@ -1564,7 +1267,7 @@ local function CreateSlider(parentTab, titleText, valueKey, minVal, maxVal, step
     valLabel.TextXAlignment = Enum.TextXAlignment.Right
 
     local sliderBg = Instance.new("TextButton")
-    sliderBg.Name = "SliderBackground"
+    sliderBg.Name = "Bg"
     sliderBg.Parent = frame
     sliderBg.Size = UDim2.new(1, -30, 0, 6)
     sliderBg.Position = UDim2.new(0, 15, 0, 32)
@@ -1579,7 +1282,7 @@ local function CreateSlider(parentTab, titleText, valueKey, minVal, maxVal, step
     sliderBgCorner.CornerRadius = UDim.new(1, 0)
 
     local sliderFill = Instance.new("Frame")
-    sliderFill.Name = "SliderFill"
+    sliderFill.Name = "Fill"
     sliderFill.Parent = sliderBg
     sliderFill.Size = UDim2.new(0, 0, 1, 0)
     sliderFill.BackgroundColor3 = Theme.Primary
@@ -1597,10 +1300,7 @@ local function CreateSlider(parentTab, titleText, valueKey, minVal, maxVal, step
         valLabel.Text = tostring(val) .. "%"
     end
 
-    InputUpdaters[valueKey] = function(v) 
-        UpdateVisuals(v) 
-    end
-    
+    InputUpdaters[valueKey] = function(v) UpdateVisuals(v) end
     UpdateVisuals(State.Values[valueKey])
 
     local isDragging = false
@@ -1616,9 +1316,7 @@ local function CreateSlider(parentTab, titleText, valueKey, minVal, maxVal, step
             State.Values[valueKey] = snappedVal
             UpdateVisuals(snappedVal)
             SaveSystem()
-            if type(LogicActions[valueKey]) == "function" then 
-                LogicActions[valueKey]() 
-            end
+            if type(LogicActions[valueKey]) == "function" then LogicActions[valueKey]() end
         end
     end
 
@@ -1628,13 +1326,11 @@ local function CreateSlider(parentTab, titleText, valueKey, minVal, maxVal, step
             UpdateValue(input)
         end
     end)
-    
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isDragging = false
         end
     end)
-    
     UserInputService.InputChanged:Connect(function(input)
         if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             UpdateValue(input)
@@ -1643,7 +1339,7 @@ local function CreateSlider(parentTab, titleText, valueKey, minVal, maxVal, step
 end
 
 -- ==============================================================================
--- [ GERENCIAMENTO DO MOBILE MODE (BOTÕES REDONDOS DRAGGABLES) ]
+-- [ GERENCIAMENTO DO MOBILE MODE MELHORADO E REDONDO ]
 -- ==============================================================================
 local function RefreshMobileButtons()
     if not State.Toggles.MobileMode then
@@ -1697,7 +1393,7 @@ local function RefreshMobileButtons()
             stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             
             local btnScale = Instance.new("UIScale")
-            btnScale.Name = "UIScale"
+            btnScale.Name = "Scale"
             btnScale.Parent = btn
             btnScale.Scale = State.Values.InterfaceScale / 100
 
@@ -1763,9 +1459,7 @@ local function RefreshMobileButtons()
                                     if type(fn) == "function" then fn(State.Toggles[keyName]) end 
                                 end
                             end
-                            if type(LogicActions[keyName]) == "function" then 
-                                LogicActions[keyName]() 
-                            end
+                            if type(LogicActions[keyName]) == "function" then LogicActions[keyName]() end
                             SaveSystem()
                         end
                     end
@@ -1852,7 +1546,7 @@ end
 
 local function CreateMobileVisToggle(parentTab, titleText, btnKey)
     local frame = Instance.new("Frame")
-    frame.Name = "MobileVisToggle_" .. btnKey
+    frame.Name = "Toggle_" .. btnKey
     frame.Parent = parentTab
     frame.Size = UDim2.new(1, -20, 0, 48)
     frame.BackgroundColor3 = Theme.Surface
@@ -1912,7 +1606,7 @@ local function CreateMobileVisToggle(parentTab, titleText, btnKey)
     dotCorner.CornerRadius = UDim.new(1, 0)
 
     local overlay = Instance.new("TextButton")
-    overlay.Name = "OverlayBtn"
+    overlay.Name = "Btn"
     overlay.Parent = frame
     overlay.Size = UDim2.new(1, 0, 1, 0)
     overlay.BackgroundTransparency = 1
@@ -2435,7 +2129,9 @@ local function createCountdownDisplay()
     billboard.AlwaysOnTop = true
     billboard.Parent = head
     
-    local label = Instance.new("TextLabel", billboard)
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Parent = billboard
     label.Size = UDim2.new(1, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = "3"
@@ -2443,7 +2139,7 @@ local function createCountdownDisplay()
     label.Font = Enum.Font.GothamBlack
     label.TextSize = 0
     label.TextStrokeTransparency = 0.2
-    label.TextStrokeColor3 = Color3.fromRGB(20, 0, 0)
+    label.TextStrokeColor3 = Color3.fromRGB(0, 20, 40) -- Reflexo azul escuro
     
     countdownBillboard = billboard
     return label
@@ -2461,16 +2157,15 @@ local function startCountdown()
             if not countdownActive then break end
             label.Text = tostring(i)
             
-            -- Animação Pop suave
             label.TextSize = 0
             TweenService:Create(label, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {TextSize = 55}):Play()
             
             if i == 3 then 
                 label.TextColor3 = Theme.Primary 
             elseif i == 2 then 
-                label.TextColor3 = Color3.fromRGB(255, 150, 50) 
+                label.TextColor3 = Color3.fromRGB(0, 150, 255) 
             elseif i == 1 then 
-                label.TextColor3 = Color3.fromRGB(50, 255, 100) 
+                label.TextColor3 = Color3.fromRGB(100, 255, 200) 
             end
             
             if i > 1 then task.wait(1) end
@@ -2632,7 +2327,9 @@ CreateInput(tabMobile, "Tamanho (Recomendado 55)", "MobSize")
 CreateInput(tabMobile, "Transparência (0-1)", "MobTransp")
 CreateInput(tabMobile, "Espaçamento Grade", "MobSpacing")
 
-local lblMobileTitle = Instance.new("TextLabel", tabMobile)
+local lblMobileTitle = Instance.new("TextLabel")
+lblMobileTitle.Name = "MobileTitle"
+lblMobileTitle.Parent = tabMobile
 lblMobileTitle.Size = UDim2.new(1, -20, 0, 30)
 lblMobileTitle.BackgroundTransparency = 1
 lblMobileTitle.Text = "BOTÕES MÓVEIS VISÍVEIS:"
@@ -2662,7 +2359,9 @@ CreateInput(tabSettings, "TP Height", "TpHeight")
 CreateInput(tabSettings, "Steal Radius", "StealRadius")
 CreateInput(tabSettings, "Steal Duration", "StealDuration")
 
-local saveInput = Instance.new("TextBox", tabSettings)
+local saveInput = Instance.new("TextBox")
+saveInput.Name = "SaveInput"
+saveInput.Parent = tabSettings
 saveInput.Size = UDim2.new(1, -20, 0, 44)
 saveInput.BackgroundColor3 = Theme.Surface
 saveInput.BorderSizePixel = 0
@@ -2675,10 +2374,11 @@ Instance.new("UICorner", saveInput).CornerRadius = UDim.new(0, 8)
 local siStroke = Instance.new("UIStroke", saveInput)
 siStroke.Color = Theme.Border
 
-local btnContainer = Instance.new("Frame", tabSettings)
+local btnContainer = Instance.new("Frame")
+btnContainer.Name = "BtnContainer"
+btnContainer.Parent = tabSettings
 btnContainer.Size = UDim2.new(1, -20, 0, 40)
 btnContainer.BackgroundTransparency = 1
-
 local bLayout = Instance.new("UIListLayout", btnContainer)
 bLayout.FillDirection = Enum.FillDirection.Horizontal
 bLayout.Padding = UDim.new(0, 10)
@@ -2704,7 +2404,9 @@ btnLoad.TextColor3 = Theme.Primary
 btnLoad.MouseEnter:Connect(function() TweenService:Create(btnLoad, Anim.Fast, {BackgroundColor3 = Theme.SurfaceHover}):Play() end)
 btnLoad.MouseLeave:Connect(function() TweenService:Create(btnLoad, Anim.Fast, {BackgroundColor3 = Theme.Surface}):Play() end)
 
-local scrollConfigs = Instance.new("ScrollingFrame", tabSettings)
+local scrollConfigs = Instance.new("ScrollingFrame")
+scrollConfigs.Name = "ScrollConfigs"
+scrollConfigs.Parent = tabSettings
 scrollConfigs.Size = UDim2.new(1, -20, 0, 120)
 scrollConfigs.BackgroundColor3 = Theme.Background
 scrollConfigs.BorderSizePixel = 0
@@ -2727,7 +2429,9 @@ local function atualizarLista()
     
     local cfgs = listarConfigs()
     for _, cfg in ipairs(cfgs) do
-        local item = Instance.new("TextButton", scrollConfigs)
+        local item = Instance.new("TextButton")
+        item.Name = "ConfigItem_" .. cfg
+        item.Parent = scrollConfigs
         item.Size = UDim2.new(1, -10, 0, 32)
         item.BackgroundColor3 = Theme.Surface
         item.BorderSizePixel = 0
@@ -2778,7 +2482,9 @@ end)
 if IS_ADMIN and tabAdmin then
     local adminScroll = tabAdmin
 
-    local lblAdmin = Instance.new("TextLabel", adminScroll)
+    local lblAdmin = Instance.new("TextLabel")
+    lblAdmin.Name = "AdminTitle"
+    lblAdmin.Parent = adminScroll
     lblAdmin.Size = UDim2.new(1, -20, 0, 30)
     lblAdmin.BackgroundTransparency = 1
     lblAdmin.Text = "PAINEL DE GERENCIAMENTO GLOBAL"
@@ -2787,7 +2493,9 @@ if IS_ADMIN and tabAdmin then
     lblAdmin.TextSize = 14
     lblAdmin.TextXAlignment = Enum.TextXAlignment.Center
 
-    local adminReasonBox = Instance.new("TextBox", adminScroll)
+    local adminReasonBox = Instance.new("TextBox")
+    adminReasonBox.Name = "ReasonBox"
+    adminReasonBox.Parent = adminScroll
     adminReasonBox.Size = UDim2.new(1, -20, 0, 35)
     adminReasonBox.BackgroundColor3 = Theme.Background
     adminReasonBox.BorderSizePixel = 0
@@ -2795,13 +2503,15 @@ if IS_ADMIN and tabAdmin then
     adminReasonBox.TextSize = 13
     adminReasonBox.TextColor3 = Theme.Text
     adminReasonBox.Text = ""
-    adminReasonBox.PlaceholderText = "Escreva a Mensagem ou Motivo..."
+    adminReasonBox.PlaceholderText = "Escreva a Mensagem ou Motivo da punição..."
     adminReasonBox.ClearTextOnFocus = false
     Instance.new("UICorner", adminReasonBox).CornerRadius = UDim.new(0, 6)
     local strokeReason = Instance.new("UIStroke", adminReasonBox)
     strokeReason.Color = Theme.Border
 
-    local searchBox = Instance.new("TextBox", adminScroll)
+    local searchBox = Instance.new("TextBox")
+    searchBox.Name = "SearchBox"
+    searchBox.Parent = adminScroll
     searchBox.Size = UDim2.new(1, -20, 0, 30)
     searchBox.BackgroundColor3 = Theme.Surface
     searchBox.BorderSizePixel = 0
@@ -2809,7 +2519,7 @@ if IS_ADMIN and tabAdmin then
     searchBox.TextSize = 12
     searchBox.TextColor3 = Theme.Text
     searchBox.Text = ""
-    searchBox.PlaceholderText = "Pesquisar por Nome, Nick ou ID no Servidor..."
+    searchBox.PlaceholderText = "Pesquisar por Nome ou ID no Servidor..."
     searchBox.ClearTextOnFocus = false
     Instance.new("UICorner", searchBox).CornerRadius = UDim.new(0, 6)
     local strokeSearch = Instance.new("UIStroke", searchBox)
@@ -2817,7 +2527,9 @@ if IS_ADMIN and tabAdmin then
 
     local selectedHubUser = nil
 
-    local lblTarget = Instance.new("TextLabel", adminScroll)
+    local lblTarget = Instance.new("TextLabel")
+    lblTarget.Name = "TargetLabel"
+    lblTarget.Parent = adminScroll
     lblTarget.Size = UDim2.new(1, -20, 0, 25)
     lblTarget.BackgroundTransparency = 1
     lblTarget.Text = "Nenhum usuário selecionado"
@@ -2826,7 +2538,9 @@ if IS_ADMIN and tabAdmin then
     lblTarget.TextSize = 12
     lblTarget.TextXAlignment = Enum.TextXAlignment.Center
 
-    local btnAdminContainer = Instance.new("Frame", adminScroll)
+    local btnAdminContainer = Instance.new("Frame")
+    btnAdminContainer.Name = "AdminBtns"
+    btnAdminContainer.Parent = adminScroll
     btnAdminContainer.Size = UDim2.new(1, -20, 0, 120)
     btnAdminContainer.BackgroundTransparency = 1
     
@@ -2852,13 +2566,13 @@ if IS_ADMIN and tabAdmin then
     local btnKill = createActionBtn("KILL PLAYER", Theme.Danger)
     local btnFreeze = createActionBtn("FREEZE PLAYER", Color3.fromRGB(0, 150, 255))
     local btnUnfreeze = createActionBtn("UNFREEZE", Color3.fromRGB(50, 200, 100))
-    local btnFling = createActionBtn("FLING PLAYER", Color3.fromRGB(255, 100, 0))
+    local btnFling = createActionBtn("FLING FÍSICO", Color3.fromRGB(255, 100, 0))
 
     local function executeAdminAction(typeAction, successMsg)
         if selectedHubUser then
             local reason = adminReasonBox.Text ~= "" and adminReasonBox.Text or "Executado pela Administração."
             
-            -- Se for o próprio player que acionou, testa localmente direto (Bypassando RLS e AntiKick)
+            -- Se a punição for KICK para nós mesmos:
             if selectedHubUser.userid == tostring(player.UserId) then
                 if typeAction == "kick" then 
                     ExecuteKick("\nMATUE HUB - KICK ADMINISTRATIVO\n\n" .. reason)
@@ -2887,9 +2601,30 @@ if IS_ADMIN and tabAdmin then
                         player.Character.HumanoidRootPart.Velocity = Vector3.new(0, 50000, 0) 
                     end 
                 end
+            else
+                -- FLING FÍSICO CONTRA OUTRO PLAYER LOCAL DO SERVIDOR (Mesmo se ele não usar o script)
+                if typeAction == "fling" then
+                    local targetPlayer = Players:GetPlayerByUserId(tonumber(selectedHubUser.userid))
+                    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                        task.spawn(function()
+                            local oldCF = player.Character.HumanoidRootPart.CFrame
+                            for i = 1, 15 do
+                                pcall(function()
+                                    player.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 1)
+                                    player.Character.HumanoidRootPart.Velocity = Vector3.new(0, 10000, 0)
+                                    player.Character.HumanoidRootPart.RotVelocity = Vector3.new(10000, 10000, 10000)
+                                end)
+                                task.wait()
+                            end
+                            player.Character.HumanoidRootPart.CFrame = oldCF
+                        end)
+                        Notificar("SUCESSO", "Arremesso Físico aplicado em " .. selectedHubUser.username)
+                        return -- Impede que vá para o Supabase já que é Físico
+                    end
+                end
             end
 
-            -- Disparo via Supabase para afetar players globalmente e em outros clients
+            -- Disparo via Supabase para afetar players que ESTÃO USANDO o hub em outros clients
             pcall(function()
                 SupabaseRequest("/rest/v1/announcements", "POST", {
                     userid = tostring(selectedHubUser.userid),
@@ -2909,9 +2644,11 @@ if IS_ADMIN and tabAdmin then
     btnKill.Activated:Connect(function() executeAdminAction("kill", "KILL enviado para: ") end)
     btnFreeze.Activated:Connect(function() executeAdminAction("freeze", "FREEZE enviado para: ") end)
     btnUnfreeze.Activated:Connect(function() executeAdminAction("unfreeze", "UNFREEZE enviado para: ") end)
-    btnFling.Activated:Connect(function() executeAdminAction("fling", "FLING absurdo enviado para: ") end)
+    btnFling.Activated:Connect(function() executeAdminAction("fling", "Tentativa de FLING em: ") end)
 
-    local playerListContainer = Instance.new("ScrollingFrame", adminScroll)
+    local playerListContainer = Instance.new("ScrollingFrame")
+    playerListContainer.Name = "PlayerList"
+    playerListContainer.Parent = adminScroll
     playerListContainer.Size = UDim2.new(1, -20, 0, 180)
     playerListContainer.BackgroundColor3 = Theme.Background
     playerListContainer.BorderSizePixel = 0
@@ -2921,19 +2658,25 @@ if IS_ADMIN and tabAdmin then
     
     local plLayout = Instance.new("UIListLayout", playerListContainer)
     plLayout.Padding = UDim.new(0, 5)
-    plLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        playerListContainer.CanvasSize = UDim2.new(0, 0, 0, plLayout.AbsoluteContentSize.Y + 10)
+    
+    pcall(function()
+        plLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            playerListContainer.CanvasSize = UDim2.new(0, 0, 0, plLayout.AbsoluteContentSize.Y + 10)
+        end)
     end)
+    
     Instance.new("UIPadding", playerListContainer).PaddingTop = UDim.new(0, 5)
 
-    -- A grande correção da Lista: Busca do Server Atual e Search engine funcional
+    -- A grande correção da Lista: Busca de TODOS os players do server + Supabase global
     local function RefreshAdminPlayerList()
         local filter = string.lower(searchBox.Text)
         local currentPlayers = Players:GetPlayers()
         if not currentPlayers then return end
 
         for _, v in ipairs(playerListContainer:GetChildren()) do
-            if v:IsA("TextButton") then v:Destroy() end
+            if v:IsA("TextButton") then 
+                v:Destroy() 
+            end
         end
 
         for _, p in ipairs(currentPlayers) do
@@ -2964,10 +2707,16 @@ if IS_ADMIN and tabAdmin then
                     
                     for _, v in ipairs(playerListContainer:GetChildren()) do 
                         if v:IsA("TextButton") then 
-                            TweenService:Create(v, Anim.Fast, {BackgroundColor3 = Theme.Surface, TextColor3 = Theme.TextMuted}):Play() 
+                            TweenService:Create(v, Anim.Fast, {
+                                BackgroundColor3 = Theme.Surface, 
+                                TextColor3 = Theme.TextMuted
+                            }):Play() 
                         end 
                     end
-                    TweenService:Create(btn, Anim.Fast, {BackgroundColor3 = Theme.Primary, TextColor3 = Theme.Background}):Play()
+                    TweenService:Create(btn, Anim.Fast, {
+                        BackgroundColor3 = Theme.Primary, 
+                        TextColor3 = Theme.Background
+                    }):Play()
                 end)
             end
         end
@@ -2984,7 +2733,7 @@ if IS_ADMIN and tabAdmin then
     end)
 
     task.spawn(function()
-        while task.wait(1) do
+        while task.wait(1.5) do
             if _G.Aimlock_Script_Versao ~= minhaVersao then break end
             if tabAdmin.Visible then
                 pcall(RefreshAdminPlayerList)
@@ -3044,7 +2793,7 @@ task.spawn(function()
                 txt.TextSize = 20
                 txt.TextColor3 = Theme.Primary
                 txt.TextStrokeTransparency = 0.2
-                txt.TextStrokeColor3 = Color3.fromRGB(0, 50, 50)
+                txt.TextStrokeColor3 = Color3.fromRGB(0, 40, 60)
             end
             local speed = Vector3.new(hrp.Velocity.X, 0, hrp.Velocity.Z).Magnitude
             local displayTxt = velGui:FindFirstChild("DisplayTexto")
@@ -3094,4 +2843,4 @@ task.spawn(function()
     if type(LogicActions.MobileMode) == "function" then LogicActions.MobileMode() end
 end)
 
-Notificar("MATUE HUB", "Sistema Base Injetado! O Hub está Ativo.")
+Notificar("MATUE HUB NEON", "O melhor script foi injetado!")

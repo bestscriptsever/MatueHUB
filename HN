@@ -242,6 +242,8 @@ end)
 -- ============================================================
 Players.PlayerRemoving:Connect(function(plr)
     if plr == player then 
+        -- Deleta o usuário do banco de dados para a lista ficar em TEMPO REAL
+        pcall(function() SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "DELETE") end)
         SaveSystem() 
     end
 end)

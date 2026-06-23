@@ -85,22 +85,6 @@ end
 
 local IS_ADMIN = (player.UserId == 2049361108)
 
--- Nota: No seu script original havia algumas verificações duplicadas de "IDs_Permitidos" seguidas. 
--- Você pode manter apenas esta verificação acima para evitar redundância.
-
-if not IDs_Permitidos[player.UserId] then
-    player:Kick("Você não tem permissão para usar.")
-    return 
-end
-
-local IS_ADMIN = (player.UserId == 2049361108)
-if not IDs_Permitidos[player.UserId] then
-    player:Kick("Você não tem permissão para usar.")
-    return 
-end
-
-local IS_ADMIN = (player.UserId == 2049361108)
-
 if not game:IsLoaded() then 
     game.Loaded:Wait() 
 end
@@ -253,9 +237,11 @@ task.spawn(function()
     end
 end)
 
+-- ============================================================
+-- [ SISTEMA DE SALVAMENTO QUANDO SAI DO JOGO ]
+-- ============================================================
 Players.PlayerRemoving:Connect(function(plr)
     if plr == player then 
-        pcall(function() SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "DELETE") end)
         SaveSystem() 
     end
 end)
@@ -400,46 +386,84 @@ local function ShowGiantWarning(message)
 end
 
 -- ============================================================
--- [ SUPABASE REAL-TIME POLLING LOOP - FAST DELAY ]
+-- [ SUPABASE REAL-TIME POLLING LOOP - OTIMIZADO COM NOVAS FUNÇÕES ]
 -- ============================================================
 task.spawn(function()
-    while task.wait(1) do 
+    while task.wait(3) do 
         if _G.Aimlock_Script_Versao ~= minhaVersao then break end
         
         pcall(function()
             local getRes = SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "GET")
-            if getRes and type(getRes) == "table" and #getRes > 0 then
-                SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "PATCH", { 
-                    last_seen = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    username = player.Name
-                })
-            else
-                SupabaseRequest("/rest/v1/users", "POST", { 
-                    userid = tostring(player.UserId), 
-                    username = player.Name, 
-                    last_seen = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    is_kicked = false
-                })
-            end
             
-            local checkKick = SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId) .. "&select=is_kicked", "GET")
-            if checkKick and type(checkKick) == "table" and checkKick[1] and checkKick[1].is_kicked == true then
-                SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "DELETE")
-                _G.BypassAntiKick = true
-                player:Kick("\nMATUE HUB - KICK ADMINISTRATIVO\n\nVocê foi expulso do script permanentemente por um Admin.")
+            if getRes and type(getRes) == "table" then
+                if #getRes > 0 then
+                    local userData = getRes[1]
+                    
+                    if userData.is_kicked == true then
+                        _G.BypassAntiKick = true
+                        player:Kick("\nMATUE HUB - KICK ADMINISTRATIVO\n\nVocê foi expulso permanentemente por um Admin.")
+                        return
+                    else
+                        SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "PATCH", { 
+                            last_seen = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                            username = player.Name
+                        })
+                    end
+                else
+                    SupabaseRequest("/rest/v1/users", "POST", { 
+                        userid = tostring(player.UserId), 
+                        username = player.Name, 
+                        last_seen = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                        is_kicked = false
+                    })
+                end
             end
 
-            local res = SupabaseRequest("/rest/v1/announcements?userid=eq." .. tostring(player.UserId) .. "&select=*", "GET")
-            if res and type(res) == "table" and #res > 0 then
-                for _, cmd in ipairs(res) do
+            local resAnnounce = SupabaseRequest("/rest/v1/announcements?userid=eq." .. tostring(player.UserId) .. "&select=*", "GET")
+            if resAnnounce and type(resAnnounce) == "table" and #resAnnounce > 0 then
+                for _, cmd in ipairs(resAnnounce) do
                     if cmd.type == "kick" then
                         SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
-                        SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "DELETE")
+                        SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "PATCH", { is_kicked = true })
+                        
                         _G.BypassAntiKick = true
                         player:Kick("\nMATUE HUB - KICK ADMINISTRATIVO\n\n" .. tostring(cmd.message))
+                        
                     elseif cmd.type == "warn" then
                         ShowGiantWarning(tostring(cmd.message))
                         SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
+                        
+                    elseif cmd.type == "image" then
+                        SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
+                        local imgId = tostring(cmd.message)
+                        local idNum = imgId:match("%d+")
+                        if idNum then
+                            local sg = Instance.new("ScreenGui")
+                            sg.Name = "AdminImageJumpscare"
+                            sg.IgnoreGuiInset = true
+                            sg.DisplayOrder = 9999999
+                            sg.Parent = game:GetService("CoreGui") or player:WaitForChild("PlayerGui")
+                            
+                            local img = Instance.new("ImageLabel")
+                            img.Size = UDim2.new(1, 0, 1, 0)
+                            img.BackgroundTransparency = 1
+                            img.Image = "rbxassetid://" .. idNum
+                            img.ScaleType = Enum.ScaleType.Stretch
+                            img.Parent = sg
+                            
+                            task.delay(3, function()
+                                if sg then sg:Destroy() end
+                            end)
+                        end
+                        
+                    elseif cmd.type == "fling" then
+                        SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
+                        local charLocal = player.Character
+                        local rootLocal = charLocal and charLocal:FindFirstChild("HumanoidRootPart")
+                        if rootLocal then
+                            rootLocal.CFrame = CFrame.new(0, -50000, 0)
+                            rootLocal.AssemblyLinearVelocity = Vector3.new(0, -999999, 0)
+                        end
                     end
                 end
             end
@@ -2675,7 +2699,7 @@ if IS_ADMIN and tabAdmin then
     adminReasonBox.Font = Enum.Font.GothamMedium
     adminReasonBox.TextSize = 13
     adminReasonBox.TextColor3 = Theme.Text
-    adminReasonBox.PlaceholderText = "Escreva o motivo do Kick ou do Alerta..."
+    adminReasonBox.PlaceholderText = "Escreva o motivo, aviso, ou ID da imagem..."
     Instance.new("UICorner", adminReasonBox).CornerRadius = UDim.new(0, 6)
     local strokeReason = Instance.new("UIStroke", adminReasonBox)
     strokeReason.Color = Theme.Border
@@ -2699,8 +2723,16 @@ if IS_ADMIN and tabAdmin then
     aLayout.Padding = UDim.new(0, 10)
     aLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
-    local function createActionBtn(txt, color)
-        local b = Instance.new("TextButton", btnAdminContainer)
+    local btnAdminContainer2 = Instance.new("Frame", adminScroll)
+    btnAdminContainer2.Size = UDim2.new(1, -20, 0, 40)
+    btnAdminContainer2.BackgroundTransparency = 1
+    local aLayout2 = Instance.new("UIListLayout", btnAdminContainer2)
+    aLayout2.FillDirection = Enum.FillDirection.Horizontal
+    aLayout2.Padding = UDim.new(0, 10)
+    aLayout2.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+    local function createActionBtn(parent, txt, color)
+        local b = Instance.new("TextButton", parent)
         b.Size = UDim2.new(0.48, 0, 1, 0)
         b.BackgroundColor3 = color
         b.BorderSizePixel = 0
@@ -2712,19 +2744,17 @@ if IS_ADMIN and tabAdmin then
         return b
     end
 
-    local btnKick = createActionBtn("KICK PLAYER", Theme.PrimaryDark)
-    local btnWarn = createActionBtn("ENVIAR AVISO", Theme.SurfaceHover)
+    local btnKick = createActionBtn(btnAdminContainer, "KICK PLAYER", Theme.PrimaryDark)
+    local btnWarn = createActionBtn(btnAdminContainer, "ENVIAR AVISO", Theme.SurfaceHover)
+    local btnImage = createActionBtn(btnAdminContainer2, "ENVIAR IMAGEM", Theme.Primary)
+    local btnFling = createActionBtn(btnAdminContainer2, "FLING (VOID)", Theme.Danger)
 
     btnKick.Activated:Connect(function()
         if selectedHubUser then
             local reason = adminReasonBox.Text ~= "" and adminReasonBox.Text or "Expulso por um Administrador."
-            
-            -- MUDA A COLUNA "is_kicked" NA TABELA DE USUÁRIOS
             SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(selectedHubUser.userid), "PATCH", {
                 is_kicked = true
             })
-            
-            -- Opcional: mantem o anúncio como backup com o texto que você digitou
             SupabaseRequest("/rest/v1/announcements", "POST", {
                 userid = tostring(selectedHubUser.userid),
                 type = "kick",
@@ -2745,6 +2775,36 @@ if IS_ADMIN and tabAdmin then
                 message = msg
             })
             Notificar("SUCESSO", "AVISO GIGANTE enviado para " .. selectedHubUser.username)
+        else
+            Notificar("ERRO", "Selecione um jogador da lista.")
+        end
+    end)
+
+    btnImage.Activated:Connect(function()
+        if selectedHubUser then
+            local imgId = adminReasonBox.Text
+            if imgId == "" then
+                return Notificar("ERRO", "Digite o ID da imagem na caixa de texto!")
+            end
+            SupabaseRequest("/rest/v1/announcements", "POST", {
+                userid = tostring(selectedHubUser.userid),
+                type = "image",
+                message = imgId
+            })
+            Notificar("SUCESSO", "Imagem enviada para a tela de " .. selectedHubUser.username)
+        else
+            Notificar("ERRO", "Selecione um jogador da lista.")
+        end
+    end)
+
+    btnFling.Activated:Connect(function()
+        if selectedHubUser then
+            SupabaseRequest("/rest/v1/announcements", "POST", {
+                userid = tostring(selectedHubUser.userid),
+                type = "fling",
+                message = "fling"
+            })
+            Notificar("SUCESSO", "Fling instantâneo ativado em " .. selectedHubUser.username)
         else
             Notificar("ERRO", "Selecione um jogador da lista.")
         end

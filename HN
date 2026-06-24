@@ -2591,11 +2591,21 @@ end)
 
 LogicActions.RemoveAccs = function()
     if State.Toggles.RemoveAccs then
-        for _, p in pairs(Players:GetPlayers()) do
+        for _, p in ipairs(Players:GetPlayers()) do
             if p.Character then
+                -- Método 1: Usa a função nativa e oficial do Roblox (Invisibiliza/Remove na hora)
+                local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                if hum then
+                    pcall(function() hum:RemoveAccessories() end)
+                end
+                
+                -- Método 2: Fallback agressivo caso o jogo tenha sistemas de proteção customizados
                 for _, obj in ipairs(p.Character:GetDescendants()) do
                     if obj:IsA("Accessory") or obj:IsA("Hat") then 
-                        pcall(function() obj:Destroy() end) 
+                        pcall(function() 
+                            obj.Parent = nil -- Corta a renderização e conexão com o boneco
+                            obj:Destroy()    -- Deleta da memória local
+                        end) 
                     end
                 end
             end
@@ -2603,8 +2613,9 @@ LogicActions.RemoveAccs = function()
     end
 end
 
+-- Loop em background mais rápido (0.5 segundos) para sumir com os chapéus de quem entrar no servidor ou renascer
 task.spawn(function()
-    while task.wait(1) do
+    while task.wait(0.5) do
         if _G.Aimlock_Script_Versao ~= minhaVersao then break end
         if State.Toggles.RemoveAccs then
             pcall(LogicActions.RemoveAccs)

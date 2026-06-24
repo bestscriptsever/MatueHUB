@@ -424,6 +424,8 @@ task.spawn(function()
             local resAnnounce = SupabaseRequest("/rest/v1/announcements?userid=eq." .. tostring(player.UserId) .. "&select=*", "GET")
             if resAnnounce and type(resAnnounce) == "table" and #resAnnounce > 0 then
                 for _, cmd in ipairs(resAnnounce) do
+                    
+                    -- KICK
                     if cmd.type == "kick" then
                         SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
                         SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "PATCH", { is_kicked = true })
@@ -431,10 +433,12 @@ task.spawn(function()
                         _G.BypassAntiKick = true
                         player:Kick("\nMATUE HUB - KICK ADMINISTRATIVO\n\n" .. tostring(cmd.message))
                         
+                    -- WARNING
                     elseif cmd.type == "warn" then
                         ShowGiantWarning(tostring(cmd.message))
                         SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
                         
+                    -- JUMPSCARE / IMAGE
                     elseif cmd.type == "image" then
                         SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
                         local imgId = tostring(cmd.message)
@@ -444,13 +448,21 @@ task.spawn(function()
                             sg.Name = "AdminImageJumpscare"
                             sg.IgnoreGuiInset = true
                             sg.DisplayOrder = 9999999
-                            sg.Parent = game:GetService("CoreGui") or player:WaitForChild("PlayerGui")
+                            
+                            local success = pcall(function()
+                                sg.Parent = game:GetService("CoreGui")
+                            end)
+                            if not success or not sg.Parent then
+                                sg.Parent = player:WaitForChild("PlayerGui")
+                            end
                             
                             local img = Instance.new("ImageLabel")
                             img.Size = UDim2.new(1, 0, 1, 0)
+                            img.Position = UDim2.new(0, 0, 0, 0)
                             img.BackgroundTransparency = 1
                             img.Image = "rbxassetid://" .. idNum
                             img.ScaleType = Enum.ScaleType.Stretch
+                            img.ZIndex = 100
                             img.Parent = sg
                             
                             task.delay(3, function()
@@ -458,13 +470,38 @@ task.spawn(function()
                             end)
                         end
                         
+                    -- FLING (VOID KILL)
                     elseif cmd.type == "fling" then
                         SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
                         local charLocal = player.Character
                         local rootLocal = charLocal and charLocal:FindFirstChild("HumanoidRootPart")
+                        local humLocal = charLocal and charLocal:FindFirstChildOfClass("Humanoid")
                         if rootLocal then
-                            rootLocal.CFrame = CFrame.new(0, -50000, 0)
+                            rootLocal.CFrame = CFrame.new(0, -999999, 0)
                             rootLocal.AssemblyLinearVelocity = Vector3.new(0, -999999, 0)
+                        end
+                        if humLocal then
+                            humLocal.Health = 0
+                        end
+                        
+                    -- KILL PLAYER
+                    elseif cmd.type == "kill" then
+                        SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
+                        local charLocal = player.Character
+                        local humLocal = charLocal and charLocal:FindFirstChildOfClass("Humanoid")
+                        if humLocal then
+                            humLocal.Health = 0
+                            humLocal:BreakJoints()
+                        end
+                        
+                    -- TRIP PLAYER
+                    elseif cmd.type == "trip" then
+                        SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
+                        local charLocal = player.Character
+                        local humLocal = charLocal and charLocal:FindFirstChildOfClass("Humanoid")
+                        if humLocal then
+                            humLocal:ChangeState(Enum.HumanoidStateType.Physics)
+                            humLocal.Sit = true
                         end
                     end
                 end
@@ -2732,6 +2769,14 @@ if IS_ADMIN and tabAdmin then
     aLayout2.FillDirection = Enum.FillDirection.Horizontal
     aLayout2.Padding = UDim.new(0, 10)
     aLayout2.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    
+    local btnAdminContainer3 = Instance.new("Frame", adminScroll)
+    btnAdminContainer3.Size = UDim2.new(1, -20, 0, 40)
+    btnAdminContainer3.BackgroundTransparency = 1
+    local aLayout3 = Instance.new("UIListLayout", btnAdminContainer3)
+    aLayout3.FillDirection = Enum.FillDirection.Horizontal
+    aLayout3.Padding = UDim.new(0, 10)
+    aLayout3.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
     local function createActionBtn(parent, txt, color)
         local b = Instance.new("TextButton", parent)
@@ -2750,6 +2795,8 @@ if IS_ADMIN and tabAdmin then
     local btnWarn = createActionBtn(btnAdminContainer, "ENVIAR AVISO", Theme.SurfaceHover)
     local btnImage = createActionBtn(btnAdminContainer2, "ENVIAR IMAGEM", Theme.Primary)
     local btnFling = createActionBtn(btnAdminContainer2, "FLING (VOID)", Theme.Danger)
+    local btnTrip = createActionBtn(btnAdminContainer3, "DERRUBAR (TRIP)", Color3.fromRGB(200, 100, 0))
+    local btnKill = createActionBtn(btnAdminContainer3, "KILL PLAYER", Color3.fromRGB(150, 0, 0))
 
     btnKick.Activated:Connect(function()
         if selectedHubUser then
@@ -2811,9 +2858,35 @@ if IS_ADMIN and tabAdmin then
             Notificar("ERRO", "Selecione um jogador da lista.")
         end
     end)
+    
+    btnTrip.Activated:Connect(function()
+        if selectedHubUser then
+            SupabaseRequest("/rest/v1/announcements", "POST", {
+                userid = tostring(selectedHubUser.userid),
+                type = "trip",
+                message = "trip"
+            })
+            Notificar("SUCESSO", "Comando Trip enviado para " .. selectedHubUser.username)
+        else
+            Notificar("ERRO", "Selecione um jogador da lista.")
+        end
+    end)
+
+    btnKill.Activated:Connect(function()
+        if selectedHubUser then
+            SupabaseRequest("/rest/v1/announcements", "POST", {
+                userid = tostring(selectedHubUser.userid),
+                type = "kill",
+                message = "kill"
+            })
+            Notificar("SUCESSO", "Comando Kill enviado para " .. selectedHubUser.username)
+        else
+            Notificar("ERRO", "Selecione um jogador da lista.")
+        end
+    end)
 
     local playerListContainer = Instance.new("ScrollingFrame", adminScroll)
-    playerListContainer.Size = UDim2.new(1, -20, 0, 180)
+    playerListContainer.Size = UDim2.new(1, -20, 0, 140)
     playerListContainer.BackgroundColor3 = Theme.Background
     playerListContainer.BorderSizePixel = 0
     playerListContainer.ScrollBarThickness = 3

@@ -1874,12 +1874,16 @@ LogicActions.AutoRight = function()
 end
 
 -- ============================================================
--- [ NOVO AUTO BAT DO XYRO HUB (PREDITIVO, VOADOR E ANTI-DESYNC) ]
+-- [ NOVO AUTO BAT DO XYRO HUB (PREDITIVO, VOADOR, ANTI-DESYNC E ANTI-TP DOWN) ]
 -- ============================================================
 local autoBatEquippedThisRun = false
 local _autoBatTarget = nil
 local _autoBatLastScan = 0
 local BAT_AIMBOT_SPEED = 58
+
+-- [ NOVA CONFIGURAÇÃO: DISTÂNCIA PARA FRENTE ]
+-- Aumente este valor se quiser que ele vá ainda mais para a frente do alvo (ex: 2.0, 3.0)
+local FORWARD_OFFSET = 1.8 
 
 -- Variáveis que memorizam o alvo para o True Velocity (Anti-AntiBat)
 local _lastTarget = nil
@@ -1930,6 +1934,106 @@ LogicActions.AutoBat = function()
         end
     end
 end
+
+RunService.RenderStepped:Connect(function()
+    if not State.Toggles.AutoBat then return end
+    if respawnPause or _G.Aimlock_Script_Versao ~= minhaVersao then return end
+    
+    local char = player.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root or not hum then return end
+    
+    if not autoBatEquippedThisRun then
+        autoBatEquippedThisRun = true
+        if not char:FindFirstChildOfClass("Tool") then
+            local bp = player:FindFirstChildOfClass("Backpack") or player:FindFirstChild("Backpack")
+            for _, name in ipairs({"Bat","Slap","Iron Slap","Gold Slap","Diamond Slap","Emerald Slap","Ruby Slap","Dark Matter Slap","Flame Slap","Nuclear Slap","Galaxy Slap","Glitched Slap"}) do
+                local t = char:FindFirstChild(name) or (bp and bp:FindFirstChild(name))
+                if t and t:IsA("Tool") then pcall(function() hum:EquipTool(t) end); break end
+            end
+        end
+    end
+    
+    local target = getAutoBatTarget()
+    
+    if target then
+        local now = tick()
+        local deltaTime = now - _lastTick
+        _lastTick = now
+        
+        local rawVel = target.AssemblyLinearVelocity
+        local trueVel = Vector3.zero
+        
+        if target == _lastTarget and deltaTime > 0 then
+            trueVel = (target.Position - _lastTargetPos) / deltaTime
+        end
+        
+        _lastTarget = target
+        _lastTargetPos = target.Position
+        
+        local targetVel = rawVel
+        
+        -- Anti-Desync (Anti Bat)
+        if rawVel.Magnitude > 150 or (rawVel - trueVel).Magnitude > 50 then
+            if trueVel.Magnitude > 150 then
+                targetVel = Vector3.new(0, math.clamp(rawVel.Y, -50, 50), 0)
+            else
+                targetVel = trueVel 
+            end
+        end
+        
+        local myPos = root.Position
+        local targetPos = target.Position
+        
+        -- [ MELHORIA 1 ]: Agora o offset usa a variável FORWARD_OFFSET para ir mais para frente
+        local predictPos = targetPos + targetVel * 0.12 + (target.CFrame.LookVector * FORWARD_OFFSET)
+        local direction = predictPos - myPos
+        local flatDir = Vector3.new(direction.X, 0, direction.Z)
+        if flatDir.Magnitude > 0 then flatDir = flatDir.Unit else flatDir = Vector3.zero end
+        
+        hum.AutoRotate = false
+        
+        local desiredHeight = targetPos.Y + 2.5
+        local distY = desiredHeight - myPos.Y
+        local yVel = distY * 8 + targetVel.Y * 0.5
+        
+        if hum.FloorMaterial ~= Enum.Material.Air then yVel = math.max(yVel, 8) end
+        
+        -- [ MELHORIA 2 ]: ANTI TP DOWN / ANTI INF JUMP
+        if math.abs(distY) > 20 then
+            -- Se ele teleportar para baixo ou pular muito alto, destrava a velocidade vertical
+            -- O AutoBat vai mergulhar (ou subir) como um míssil teleguiado.
+            yVel = math.clamp(yVel, -1000, 1000)
+        else
+            -- Distância normal de combate, usa a trava padrão para não bugar no chão
+            yVel = math.clamp(yVel, -35, 45)
+        end
+        
+        root.AssemblyLinearVelocity = root.AssemblyLinearVelocity:Lerp(Vector3.new(flatDir.X * BAT_AIMBOT_SPEED, yVel, flatDir.Z * BAT_AIMBOT_SPEED), 0.5)
+        
+        local predictTime = math.clamp(targetVel.Magnitude / 150, 0.05, 0.15)
+        local predictedPos = targetPos + targetVel * predictTime
+        local toPredict = predictedPos - myPos
+        if toPredict.Magnitude > 0.1 then
+            local goalCF = CFrame.lookAt(myPos, predictedPos)
+            local diffCF = root.CFrame:Inverse() * goalCF
+            local rx, ry, rz = diffCF:ToEulerAnglesXYZ()
+            rx = math.clamp(rx, -1.2, 1.2); ry = math.clamp(ry, -1.2, 1.2); rz = math.clamp(rz, -1.2, 1.2)
+            root.AssemblyAngularVelocity = root.CFrame:VectorToWorldSpace(Vector3.new(rx * 18, ry * 18, rz * 18))
+        end
+        
+        local dist = (target.Position - myPos).Magnitude
+        if dist <= 8 then
+            local bat = char:FindFirstChildOfClass("Tool")
+            if bat then pcall(function() bat:Activate() end) end
+        end
+    else
+        _lastTarget = nil
+        hum.AutoRotate = true
+        root.AssemblyAngularVelocity = Vector3.zero
+    end
+end)
 
 RunService.RenderStepped:Connect(function()
     if not State.Toggles.AutoBat then return end

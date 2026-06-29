@@ -69,6 +69,7 @@ end
 local IDs_Permitidos = {
     [2049361108] = true, -- ADMIN EXCLUSIVO
     [10519600803] = true, -- Daviferreira
+    [6178386075] = true, -- Hakin
     [5491260413] = true, -- GUILHERME_0644
     [9476297444] = true, -- GUILHERME123456G55
     [4392089033] = true, -- Marivaldo

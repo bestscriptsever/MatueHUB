@@ -3341,7 +3341,7 @@ btnKick.Activated:Connect(function()
     
     Instance.new("UIPadding", playerListContainer).PaddingTop = UDim.new(0, 5)
 
-    local function RefreshAdminPlayerList()
+   local function RefreshAdminPlayerList()
         local liveUsers = SupabaseRequest("/rest/v1/users?select=*", "GET")
         if type(liveUsers) ~= "table" then return end
 
@@ -3349,7 +3349,17 @@ btnKick.Activated:Connect(function()
             if v:IsA("TextButton") then v:Destroy() end
         end
 
+        local nowUnix = DateTime.now().UnixTimestamp
+
         for _, u in ipairs(liveUsers) do
+            -- Filtra os fantasmas para eles nem aparecerem na sua tela
+            if u.last_seen then
+                local dt = DateTime.fromIsoDate(u.last_seen)
+                if dt and (nowUnix - dt.UnixTimestamp) > 15 then
+                    continue -- Pula esse jogador
+                end
+            end
+
             local btn = Instance.new("TextButton", playerListContainer)
             btn.Size = UDim2.new(1, -10, 0, 30)
             btn.BackgroundColor3 = Theme.Surface
@@ -3394,9 +3404,36 @@ end
 -- ============================================================
 local currentPing = 0
 task.spawn(function()
-    while task.wait(1) do
+    while task.wait(5) do
         if _G.Aimlock_Script_Versao ~= minhaVersao then break end
-        pcall(function() currentPing = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue()) end)
+        pcall(function()
+            -- Agora pegamos o last_seen também para calcular o tempo
+            local users = SupabaseRequest("/rest/v1/users?select=userid,last_seen", "GET")
+            if users and type(users) == "table" then
+                local nowUnix = DateTime.now().UnixTimestamp
+                local count = 0
+                
+                for _, u in ipairs(users) do
+                    local isGhost = false
+                    if u.last_seen then
+                        local dt = DateTime.fromIsoDate(u.last_seen)
+                        -- Se a última atualização foi há mais de 15 segundos, é fantasma
+                        if dt and (nowUnix - dt.UnixTimestamp) > 15 then
+                            isGhost = true
+                            -- Se você for o Admin, seu script vai limpar o banco de dados pra todo mundo
+                            if IS_ADMIN then
+                                SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(u.userid), "DELETE")
+                            end
+                        end
+                    end
+                    
+                    if not isGhost then
+                        count = count + 1
+                    end
+                end
+                activeText.Text = "Pessoas usando agora: " .. tostring(count)
+            end
+        end)
     end
 end)
 

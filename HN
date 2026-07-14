@@ -3238,12 +3238,12 @@ if IS_ADMIN and tabAdmin then
     local btnTrip = createActionBtn(btnAdminContainer3, "DERRUBAR (TRIP)", Color3.fromRGB(200, 100, 0))
     local btnKill = createActionBtn(btnAdminContainer3, "KILL PLAYER", Color3.fromRGB(150, 0, 0))
 
-    btnKick.Activated:Connect(function()
+btnKick.Activated:Connect(function()
         if selectedHubUser then
             local reason = adminReasonBox.Text ~= "" and adminReasonBox.Text or "Expulso por um Administrador."
-            SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(selectedHubUser.userid), "PATCH", {
-                is_kicked = true
-            })
+            
+            -- Removido o PATCH que setava is_kicked = true para não dar ban permanente
+            
             SupabaseRequest("/rest/v1/announcements", "POST", {
                 userid = tostring(selectedHubUser.userid),
                 type = "kick",

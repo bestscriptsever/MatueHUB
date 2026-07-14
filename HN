@@ -3010,6 +3010,57 @@ task.spawn(function()
     while task.wait(5) do
         if _G.Aimlock_Script_Versao ~= minhaVersao then break end
         pcall(function()
+            local users = SupabaseRequest("/rest/v1/users?select=userid,last_seen", "GET")
+            if users and type(users) == "table" then
+                local nowUnix = os.time()
+                local count = 0
+                
+                for _, u in ipairs(users) do
+                    local isGhost = false
+                    if u.last_seen then
+                        local dt = DateTime.fromIsoDate(u.last_seen)
+                        -- Se a última atualização foi há mais de 20 segundos, é fantasma
+                        if dt and (nowUnix - dt.UnixTimestamp) > 20 then
+                            isGhost = true
+                            -- AGORA QUALQUER UM COM O SCRIPT LIMPA O BANCO DE DADOS
+                            SupabaseRequest("/rest/v1/users?userid=eq." .. tostring(u.userid), "DELETE")
+                        end
+                    end
+                    
+                    if not isGhost then
+                        count = count + 1
+                    end
+                end
+                activeText.Text = "Pessoas usando agora: " .. tostring(count)
+            end
+        end)
+    end
+end)
+-- [ FIM DO CONTADOR ] --
+
+local dotGlow = Instance.new("Frame", activeUsersFrame)
+dotGlow.Size = UDim2.new(0, 12, 0, 12)
+dotGlow.Position = UDim2.new(0, 15, 0.5, -6)
+dotGlow.BackgroundColor3 = Color3.fromRGB(50, 255, 50)
+Instance.new("UICorner", dotGlow).CornerRadius = UDim.new(1, 0)
+
+local uiGradient = Instance.new("UIGradient", dotGlow)
+uiGradient.Color = ColorSequence.new(Color3.fromRGB(100, 255, 100), Color3.fromRGB(0, 200, 0))
+
+local activeText = Instance.new("TextLabel", activeUsersFrame)
+activeText.Size = UDim2.new(1, -40, 1, 0)
+activeText.Position = UDim2.new(0, 35, 0, 0)
+activeText.BackgroundTransparency = 1
+activeText.Font = Enum.Font.GothamMedium
+activeText.TextSize = 13
+activeText.TextColor3 = Theme.Text
+activeText.Text = "Pessoas usando agora: Carregando..."
+activeText.TextXAlignment = Enum.TextXAlignment.Left
+
+task.spawn(function()
+    while task.wait(5) do
+        if _G.Aimlock_Script_Versao ~= minhaVersao then break end
+        pcall(function()
             local users = SupabaseRequest("/rest/v1/users?select=userid", "GET")
             if users and type(users) == "table" then
                 activeText.Text = "Pessoas usando agora: " .. tostring(#users)

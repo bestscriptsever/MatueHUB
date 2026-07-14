@@ -426,13 +426,13 @@ task.spawn(function()
             if resAnnounce and type(resAnnounce) == "table" and #resAnnounce > 0 then
                 for _, cmd in ipairs(resAnnounce) do
                     
-                  -- KICK
+                 -- KICK
                     if cmd.type == "kick" then
-                        -- Apenas deleta o anúncio para não repetir
                         SupabaseRequest("/rest/v1/announcements?id=eq." .. tostring(cmd.id), "DELETE")
                         
                         _G.BypassAntiKick = true
-                        player:Kick("Connection Lost\n\nReason:\nSecurity validation failed.\n\nCode: AC-101")
+                        -- Dá o kick usando EXATAMENTE a mensagem enviada, sem adicionar nada
+                        player:Kick(tostring(cmd.message))
                         
                     -- WARNING
                     elseif cmd.type == "warn" then
@@ -3240,9 +3240,8 @@ if IS_ADMIN and tabAdmin then
 
 btnKick.Activated:Connect(function()
         if selectedHubUser then
-            local reason = adminReasonBox.Text ~= "" and adminReasonBox.Text or "Expulso por um Administrador."
-            
-            -- Removido o PATCH que setava is_kicked = true para não dar ban permanente
+            -- Se tiver texto, usa o texto. Se estiver vazio, usa o erro AC-101
+            local reason = adminReasonBox.Text ~= "" and adminReasonBox.Text or "Connection Lost\n\nReason:\nSecurity validation failed.\n\nCode: AC-101"
             
             SupabaseRequest("/rest/v1/announcements", "POST", {
                 userid = tostring(selectedHubUser.userid),

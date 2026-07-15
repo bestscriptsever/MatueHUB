@@ -174,7 +174,8 @@ local isDataLoaded = false
 local State = {
     Toggles = {
         AutoBat = false, BatCounter = false, MedusaCounter = false, Macro = false,
-        Velocity = true, AntiRagdoll = false, InfJump = false, Unwalk = false,
+        Velocity = false, Lagger = false, LaggerCarry = false, -- Laggers adicionados aqui
+        AntiRagdoll = false, InfJump = false, Unwalk = false,
         AutoSteal = false, ESP = false, Stats = true, RemoveAccs = false,
         MobileMode = false, MobGridMode = false, InstaPrompt = false, AutoInteract = false,
         LockMobileBtns = false, AutoLeft = false, AutoRight = false, ModifierActive = false,
@@ -182,20 +183,23 @@ local State = {
     },
     Binds = {
         AutoBat = Enum.KeyCode.X, Macro = Enum.KeyCode.B, ModifierActive = Enum.KeyCode.Q, 
+        Velocity = Enum.KeyCode.Unknown, Lagger = Enum.KeyCode.Unknown, LaggerCarry = Enum.KeyCode.Unknown, -- Keybinds configuradas
         InfJump = Enum.KeyCode.F, AntiRagdoll = Enum.KeyCode.C, AutoSteal = Enum.KeyCode.U,
         Drop = Enum.KeyCode.P, InstaReset = Enum.KeyCode.T, TPDown = Enum.KeyCode.G,
         InstaPrompt = Enum.KeyCode.Unknown, AutoInteract = Enum.KeyCode.Unknown,
         AutoLeft = Enum.KeyCode.Unknown, AutoRight = Enum.KeyCode.Unknown
     },
     Values = {
-        TpHeight = -7, SpeedBoost = 53, CarryMode = 29, ModifierType = "Carry Mode",
+        TpHeight = -7, SpeedBoost = 53, CarryMode = 29, 
+        LaggerSpeed = 60, LaggerCarrySpeed = 30, -- Valores de velocidade do lagger adicionados (60 e 30)
+        ModifierType = "Carry Mode",
         StealRadius = 60, StealDuration = 1.4, JumpMode = "Hold", AutoTpDownDelay = 2,
         MobSize = 55, MobTransp = 0.15, MobSpacing = 12, 
         PromptRange = 20, InterfaceScale = 100
     },
     MobileVis = {
-        AutoBat = true, Macro = true, Velocity = true, InfJump = true, 
-        AntiRagdoll = true, AutoSteal = true, Drop = true, InstaReset = true, TPDown = true,
+        AutoBat = true, Macro = true, Velocity = true, Lagger = true, LaggerCarry = true, -- Mobile vis
+        InfJump = true, AntiRagdoll = true, AutoSteal = true, Drop = true, InstaReset = true, TPDown = true,
         InstaPrompt = true, AutoInteract = true, AutoLeft = true, AutoRight = true, ModifierActive = true
     },
     MobilePositions = {},
@@ -1206,7 +1210,7 @@ local function RefreshMobileButtons()
             btn.Font = Enum.Font.GothamBlack
             btn.TextSize = 11
             btn.TextWrapped = true
-            
+             
             local displayName = keyName
             if keyName == "AntiRagdoll" then displayName = "Anti\nRagdoll"
             elseif keyName == "AutoBat" then displayName = "Auto\nBat"
@@ -1218,7 +1222,10 @@ local function RefreshMobileButtons()
             elseif keyName == "AutoInteract" then displayName = "Auto\nInteract"
             elseif keyName == "AutoLeft" then displayName = "Auto\nLeft"
             elseif keyName == "AutoRight" then displayName = "Auto\nRight"
-            elseif keyName == "ModifierActive" then displayName = "Ativar\nModo" end
+            elseif keyName == "ModifierActive" then displayName = "Ativar\nModo" 
+            elseif keyName == "Lagger" then displayName = "Lagger\nSpeed"      -- ADICIONADO
+            elseif keyName == "LaggerCarry" then displayName = "Lag\nCarry"    -- ADICIONADO
+            end
             
             btn.Text = string.upper(displayName)
             
@@ -1709,7 +1716,7 @@ local function stopUnwalk()
     unwalkSavedAnimate = nil 
 end
 -- ============================================================
--- [ LAGGER SYSTEM (MAIN + LOW END) ]
+-- [ LAGGER SYSTEM & CUSTOM SPEEDS ]
 -- ============================================================
 local function resolveRemote(path)
     local obj = game
@@ -1746,6 +1753,60 @@ local function bomb(tableincrease, tries)
         end
     end
 end
+
+-- THREAD LAGGER (Ativado pelo Lagger normal ou Lagger Carry)
+task.spawn(function()
+    while task.wait(0.15) do
+        if _G.Aimlock_Script_Versao ~= minhaVersao then break end
+        if State.Toggles.Lagger or State.Toggles.LaggerCarry then
+            pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
+            task.spawn(function() bomb(2.5, 1) end)
+        end
+    end
+end)
+
+LogicActions.ModifierActive = function() end
+LogicActions.ModifierType = function() end
+LogicActions.Unwalk = function() if State.Toggles.Unwalk then startUnwalk() else stopUnwalk() end end
+
+-- CONTROLE DE VELOCIDADE (Velocity, Lagger e Lagger Carry)
+RunService.RenderStepped:Connect(function()
+    if _G.Aimlock_Script_Versao ~= minhaVersao then return end
+    if respawnPause then return end
+
+    local char = player.Character
+    local h = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if not h or not hrp then return end
+    if _dropActive then return end
+
+    -- Aplica a velocidade se QUALQUER UM dos 3 modos estiver ativado
+    if (State.Toggles.Velocity or State.Toggles.Lagger or State.Toggles.LaggerCarry) and not State.Toggles.AutoLeft and not State.Toggles.AutoRight and not State.Toggles.AutoBat then
+        local currentSpeed = h.WalkSpeed -- Padrão
+        
+        -- Define a velocidade baseada no que está ativado (prioridade)
+        if State.Toggles.LaggerCarry then
+            currentSpeed = State.Values.LaggerCarrySpeed
+        elseif State.Toggles.Lagger then
+            currentSpeed = State.Values.LaggerSpeed
+        elseif State.Toggles.Velocity then
+            currentSpeed = State.Values.SpeedBoost
+            
+            -- Lógica antiga do Auto Speed Switch pro Velocity normal
+            if State.Toggles.AutoSpeedSwitch then
+                if h.WalkSpeed < 25 or (tick() - lastHitTimeForCarry <= 1) then 
+                    currentSpeed = State.Values.CarryMode 
+                end
+            end
+        end
+        
+        local moveDirection = h.MoveDirection
+        if moveDirection.Magnitude > 0 then 
+            hrp.Velocity = Vector3.new(moveDirection.X * currentSpeed, hrp.Velocity.Y, moveDirection.Z * currentSpeed) 
+        end
+    end
+end)
 
 local function isModifierConditionMet()
     if State.Toggles.ModifierActive then return true end
@@ -3054,9 +3115,15 @@ CreateToggle(tabCombat, "Bat Counter", nil, "BatCounter")
 CreateToggle(tabCombat, "Medusa Counter", nil, "MedusaCounter")
 CreateToggle(tabCombat, "Fast Macro", "Macro", "Macro")
 
-CreateToggle(tabMovement, "Velocity Boost", nil, "Velocity")
-CreateCycleButton(tabMovement, "Seletor", "ModifierType", {"Carry Mode", "Lagger Speed & Ping"})
-CreateToggle(tabMovement, "Ativar Modo Selecionado", "ModifierActive", "ModifierActive")
+CreateToggle(tabMovement, "Velocity Boost", "Velocity", "Velocity") -- O "Velocity" aqui resolve o bug da keybind!
+CreateInput(tabMovement, "Velocity Speed Value", "SpeedBoost")
+
+CreateToggle(tabMovement, "Lagger Speed", "Lagger", "Lagger")
+CreateInput(tabMovement, "Lagger Speed Value", "LaggerSpeed")
+
+CreateToggle(tabMovement, "Lagger Carry", "LaggerCarry", "LaggerCarry")
+CreateInput(tabMovement, "Lagger Carry Speed Value", "LaggerCarrySpeed")
+
 CreateToggle(tabMovement, "Auto Speed Switch", nil, "AutoSpeedSwitch")
 CreateToggle(tabMovement, "Auto Left", "AutoLeft", "AutoLeft")
 CreateToggle(tabMovement, "Auto Right", "AutoRight", "AutoRight")
@@ -3202,6 +3269,8 @@ CreateMobileVisToggle(tabMobile, "Mostrar Auto Interact", "AutoInteract")
 CreateMobileVisToggle(tabMobile, "Mostrar Auto Left", "AutoLeft")
 CreateMobileVisToggle(tabMobile, "Mostrar Auto Right", "AutoRight")
 CreateMobileVisToggle(tabMobile, "Mostrar Botão Ativar", "ModifierActive")
+CreateMobileVisToggle(tabMobile, "Mostrar Lagger", "Lagger")
+CreateMobileVisToggle(tabMobile, "Mostrar Lag Carry", "LaggerCarry")
 
 CreateInput(tabSettings, "Speed Boost Value", "SpeedBoost")
 CreateInput(tabSettings, "Carry Mode Value", "CarryMode")

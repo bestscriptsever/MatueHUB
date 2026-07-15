@@ -187,8 +187,8 @@ local State = {
         InstaPrompt = Enum.KeyCode.Unknown, AutoInteract = Enum.KeyCode.Unknown,
         AutoLeft = Enum.KeyCode.Unknown, AutoRight = Enum.KeyCode.Unknown
     },
-    Values = {
-        TpHeight = -7, SpeedBoost = 53, CarryMode = 29, ModifierType = "Carry Speed",
+Values = {
+        TpHeight = -7, SpeedBoost = 53, CarryMode = 29, ModifierType = "Carry Mode",
         StealRadius = 60, StealDuration = 1.4, JumpMode = "Hold", AutoTpDownDelay = 2,
         MobSize = 55, MobTransp = 0.15, MobSpacing = 12, 
         PromptRange = 20, InterfaceScale = 100
@@ -196,8 +196,7 @@ local State = {
     MobileVis = {
         AutoBat = true, Macro = true, Velocity = true, InfJump = true, 
         AntiRagdoll = true, AutoSteal = true, Drop = true, InstaReset = true, TPDown = true,
-        InstaPrompt = true, AutoInteract = true, AutoLeft = true, AutoRight = true, CarryMode = true,
-        LaggerMode = true -- Adicionado no Mobile Mode
+        InstaPrompt = true, AutoInteract = true, AutoLeft = true, AutoRight = true, ModifierKey = true
     },
     MobilePositions = {},
     IsMinimized = false
@@ -1219,8 +1218,7 @@ local function RefreshMobileButtons()
             elseif keyName == "AutoInteract" then displayName = "Auto\nInteract"
             elseif keyName == "AutoLeft" then displayName = "Auto\nLeft"
             elseif keyName == "AutoRight" then displayName = "Auto\nRight"
-            elseif keyName == "CarryMode" then displayName = "Carry\nMode"
-            elseif keyName == "LaggerMode" then displayName = "Lagger\nSpeed" end
+            elseif keyName == "ModifierKey" then displayName = "Ativar\nModo" end
             
             btn.Text = string.upper(displayName)
             
@@ -1751,12 +1749,12 @@ end
 
 local laggerLoopActive = false
 LogicActions.ModifierActive = function()
-    if State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed" then
+    if State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed & Ping" then
         if not laggerLoopActive then
             laggerLoopActive = true
             -- THREAD MAIN
             task.spawn(function()
-                while State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed" do
+                while State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed & Ping" do
                     pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
                     task.spawn(function() bomb(2.5, 1) end)
                     task.wait(0.15)
@@ -1764,7 +1762,7 @@ LogicActions.ModifierActive = function()
             end)
             -- THREAD LOW END
             task.spawn(function()
-                while State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed" do
+                while State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed & Ping" do
                     pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
                     task.spawn(function() bomb(1.5, 1) end)
                     task.wait(0.155)
@@ -1795,9 +1793,9 @@ RunService.RenderStepped:Connect(function()
         local currentSpeed = State.Values.SpeedBoost
         
         if State.Toggles.ModifierActive then
-            if State.Values.ModifierType == "Carry Speed" then
+            if State.Values.ModifierType == "Carry Mode" then
                 currentSpeed = State.Values.CarryMode
-            elseif State.Values.ModifierType == "Lagger Speed" then
+            elseif State.Values.ModifierType == "Lagger Speed & Ping" then
                 currentSpeed = 25
             end
         elseif State.Toggles.AutoSpeedSwitch then
@@ -3180,8 +3178,7 @@ CreateMobileVisToggle(tabMobile, "Mostrar Insta Prompt", "InstaPrompt")
 CreateMobileVisToggle(tabMobile, "Mostrar Auto Interact", "AutoInteract")
 CreateMobileVisToggle(tabMobile, "Mostrar Auto Left", "AutoLeft")
 CreateMobileVisToggle(tabMobile, "Mostrar Auto Right", "AutoRight")
-CreateMobileVisToggle(tabMobile, "Mostrar Carry Mode", "CarryMode")
-CreateMobileVisToggle(tabMobile, "Mostrar Lagger Mode", "LaggerMode")
+CreateMobileVisToggle(tabMobile, "Mostrar Botão Ativar", "ModifierKey")
 
 CreateInput(tabSettings, "Speed Boost Value", "SpeedBoost")
 CreateInput(tabSettings, "Carry Mode Value", "CarryMode")

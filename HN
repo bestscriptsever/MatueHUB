@@ -203,7 +203,6 @@ local State = {
     MobilePositions = {},
     IsMinimized = false
 }
-}
 
 local POS_WAYPOINTS = {
     L1 = Vector3.new(-476.48, -6.28, 92.73), L2 = Vector3.new(-483.12, -4.95, 94.80),
@@ -1780,7 +1779,42 @@ LogicActions.LaggerMode = function()
 end
 LogicActions.Unwalk = function() if State.Toggles.Unwalk then startUnwalk() else stopUnwalk() end end
 
-State.Toggles.Velocity
+LogicActions.Unwalk = function() if State.Toggles.Unwalk then startUnwalk() else stopUnwalk() end end
+
+RunService.RenderStepped:Connect(function()
+    if _G.Aimlock_Script_Versao ~= minhaVersao then return end
+    if respawnPause then return end
+
+    local char = player.Character
+    local h = char and char:FindFirstChildOfClass("Humanoid")
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if not h or not hrp then return end
+    if _dropActive then return end
+
+    if (State.Toggles.Velocity or State.Toggles.LaggerMode) and not State.Toggles.AutoLeft and not State.Toggles.AutoRight and not State.Toggles.AutoBat then
+        local currentSpeed = State.Values.SpeedBoost
+        
+        if State.Toggles.LaggerMode then
+            currentSpeed = 25
+        else
+            if State.Toggles.AutoSpeedSwitch then
+                local isCarrying = h.WalkSpeed < 25
+                local isRecentlyHit = (tick() - lastHitTimeForCarry <= 1)
+                if isCarrying or isRecentlyHit then currentSpeed = State.Values.CarryMode end
+            else
+                if State.Toggles.CarryMode then currentSpeed = State.Values.CarryMode end
+            end
+        end
+        
+        local moveDirection = h.MoveDirection
+        if moveDirection.Magnitude > 0 then 
+            hrp.Velocity = Vector3.new(moveDirection.X * currentSpeed, hrp.Velocity.Y, moveDirection.Z * currentSpeed) 
+        end
+    end
+end)
+
+local autoLeftConn = nil
 
 local autoLeftConn = nil
 local autoRightConn = nil

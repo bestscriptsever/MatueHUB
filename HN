@@ -2575,6 +2575,23 @@ UserInputService.InputBegan:Connect(function(input, gpe)
             end
         end
     end
+    
+    if gpe or UserInputService:GetFocusedTextBox() then return end 
+    
+    for keyName, keyCode in pairs(State.Binds) do
+        if input.KeyCode == keyCode and keyCode ~= Enum.KeyCode.Unknown then
+            if keyName == "TPDown" then funcTPDown()
+            elseif keyName == "Drop" then runDropBrainrot()
+            elseif keyName == "InstaReset" then funcInstaReset()
+            elseif State.Toggles[keyName] ~= nil then
+                State.Toggles[keyName] = not State.Toggles[keyName]
+                if VisualUpdaters[keyName] then for _, fn in ipairs(VisualUpdaters[keyName]) do fn(State.Toggles[keyName]) end end
+                if LogicActions[keyName] then LogicActions[keyName]() end
+                SaveSystem()
+            end
+        end
+    end
+end)
 
 UserInputService.InputEnded:Connect(function(input)
     if _G.Aimlock_Script_Versao ~= minhaVersao or not State.Toggles.InfJump then return end

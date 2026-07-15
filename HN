@@ -181,13 +181,13 @@ local State = {
         AutoSpeedSwitch = false
     },
     Binds = {
-        AutoBat = Enum.KeyCode.X, Macro = Enum.KeyCode.B, ModifierKey = Enum.KeyCode.Q, 
+        AutoBat = Enum.KeyCode.X, Macro = Enum.KeyCode.B, ModifierActive = Enum.KeyCode.Q, 
         InfJump = Enum.KeyCode.F, AntiRagdoll = Enum.KeyCode.C, AutoSteal = Enum.KeyCode.U,
         Drop = Enum.KeyCode.P, InstaReset = Enum.KeyCode.T, TPDown = Enum.KeyCode.G,
         InstaPrompt = Enum.KeyCode.Unknown, AutoInteract = Enum.KeyCode.Unknown,
         AutoLeft = Enum.KeyCode.Unknown, AutoRight = Enum.KeyCode.Unknown
     },
-Values = {
+    Values = {
         TpHeight = -7, SpeedBoost = 53, CarryMode = 29, ModifierType = "Carry Mode",
         StealRadius = 60, StealDuration = 1.4, JumpMode = "Hold", AutoTpDownDelay = 2,
         MobSize = 55, MobTransp = 0.15, MobSpacing = 12, 
@@ -196,7 +196,7 @@ Values = {
     MobileVis = {
         AutoBat = true, Macro = true, Velocity = true, InfJump = true, 
         AntiRagdoll = true, AutoSteal = true, Drop = true, InstaReset = true, TPDown = true,
-        InstaPrompt = true, AutoInteract = true, AutoLeft = true, AutoRight = true, ModifierKey = true
+        InstaPrompt = true, AutoInteract = true, AutoLeft = true, AutoRight = true, ModifierActive = true
     },
     MobilePositions = {},
     IsMinimized = false
@@ -1218,7 +1218,7 @@ local function RefreshMobileButtons()
             elseif keyName == "AutoInteract" then displayName = "Auto\nInteract"
             elseif keyName == "AutoLeft" then displayName = "Auto\nLeft"
             elseif keyName == "AutoRight" then displayName = "Auto\nRight"
-            elseif keyName == "ModifierKey" then displayName = "Ativar\nModo" end
+            elseif keyName == "ModifierActive" then displayName = "Ativar\nModo" end
             
             btn.Text = string.upper(displayName)
             
@@ -1747,35 +1747,41 @@ local function bomb(tableincrease, tries)
     end
 end
 
-local laggerLoopActive = false
-LogicActions.ModifierActive = function()
-    if State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed & Ping" then
-        if not laggerLoopActive then
-            laggerLoopActive = true
-            -- THREAD MAIN
-            task.spawn(function()
-                while State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed & Ping" do
-                    pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
-                    task.spawn(function() bomb(2.5, 1) end)
-                    task.wait(0.15)
-                end
-            end)
-            -- THREAD LOW END
-            task.spawn(function()
-                while State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed & Ping" do
-                    pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
-                    task.spawn(function() bomb(1.5, 1) end)
-                    task.wait(0.155)
-                end
-                laggerLoopActive = false
-            end)
-        end
-    else
-        laggerLoopActive = false
+local function isModifierConditionMet()
+    if State.Toggles.ModifierActive then return true end
+    if State.Toggles.AutoSpeedSwitch then
+        local char = player.Character
+        local h = char and char:FindFirstChildOfClass("Humanoid")
+        if h and h.WalkSpeed < 25 then return true end
+        if (tick() - lastHitTimeForCarry <= 1) then return true end
     end
+    return false
 end
-LogicActions.ModifierType = LogicActions.ModifierActive
 
+-- THREAD MAIN LAGGER (Auto-gerenciável)
+task.spawn(function()
+    while task.wait(0.15) do
+        if _G.Aimlock_Script_Versao ~= minhaVersao then break end
+        if isModifierConditionMet() and State.Values.ModifierType == "Lagger Speed & Ping" then
+            pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
+            task.spawn(function() bomb(2.5, 1) end)
+        end
+    end
+end)
+
+-- THREAD LOW END LAGGER (Auto-gerenciável)
+task.spawn(function()
+    while task.wait(0.155) do
+        if _G.Aimlock_Script_Versao ~= minhaVersao then break end
+        if isModifierConditionMet() and State.Values.ModifierType == "Lagger Speed & Ping" then
+            pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
+            task.spawn(function() bomb(1.5, 1) end)
+        end
+    end
+end)
+
+LogicActions.ModifierActive = function() end
+LogicActions.ModifierType = function() end
 LogicActions.Unwalk = function() if State.Toggles.Unwalk then startUnwalk() else stopUnwalk() end end
 
 RunService.RenderStepped:Connect(function()
@@ -1792,16 +1798,9 @@ RunService.RenderStepped:Connect(function()
     if State.Toggles.Velocity and not State.Toggles.AutoLeft and not State.Toggles.AutoRight and not State.Toggles.AutoBat then
         local currentSpeed = State.Values.SpeedBoost
         
-        if State.Toggles.ModifierActive then
-            if State.Values.ModifierType == "Carry Mode" then
-                currentSpeed = State.Values.CarryMode
-            elseif State.Values.ModifierType == "Lagger Speed & Ping" then
-                currentSpeed = 25
-            end
-        elseif State.Toggles.AutoSpeedSwitch then
-            local isCarrying = h.WalkSpeed < 25
-            local isRecentlyHit = (tick() - lastHitTimeForCarry <= 1)
-            if isCarrying or isRecentlyHit then currentSpeed = State.Values.CarryMode end
+        if isModifierConditionMet() then
+            -- Aplica a velocidade da sua "Settings" para qualquer modo modificado!
+            currentSpeed = State.Values.CarryMode
         end
         
         local moveDirection = h.MoveDirection
@@ -2561,14 +2560,21 @@ player.CharacterAdded:Connect(function() task.wait(1) hookMobileJump() end)
 UserInputService.JumpRequest:Connect(function() if _G.Aimlock_Script_Versao == minhaVersao then performInfiniteJump() end end)
 
 UserInputService.InputBegan:Connect(function(input, gpe)
-    if _G.Aimlock_Script_Versao ~= minhaVersao or not State.Toggles.InfJump then return end
-    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Space and not UserInputService:GetFocusedTextBox() then 
-        if State.Values.JumpMode == "Hold" or State.Values.JumpMode == "Auto TP" then
-            holdJumpPressed = true
-            task.delay(0.12, function() if holdJumpPressed then holdJumpActive = true lastAutoTpDownTime = tick() performInfiniteJump() end end)
-        else performInfiniteJump() end
+    if listeningAction then
+        if input.UserInputType == Enum.UserInputType.Keyboard or string.find(input.UserInputType.Name, "Gamepad") then
+            if input.KeyCode ~= Enum.KeyCode.Unknown then
+                -- Remove a bind se ela já estiver sendo usada em outro lugar
+                for k, v in pairs(State.Binds) do
+                    if v == input.KeyCode and k ~= listeningAction.name then
+                        State.Binds[k] = Enum.KeyCode.Unknown
+                    end
+                end
+                State.Binds[listeningAction.name] = input.KeyCode
+                atualizarTextosDosBotoes() listeningAction = nil SaveSystem()
+                return 
+            end
+        end
     end
-end)
 
 UserInputService.InputEnded:Connect(function(input)
     if _G.Aimlock_Script_Versao ~= minhaVersao or not State.Toggles.InfJump then return end
@@ -3033,7 +3039,7 @@ CreateToggle(tabCombat, "Fast Macro", "Macro", "Macro")
 
 CreateToggle(tabMovement, "Velocity Boost", nil, "Velocity")
 CreateCycleButton(tabMovement, "Seletor", "ModifierType", {"Carry Mode", "Lagger Speed & Ping"})
-CreateToggle(tabMovement, "Ativar Modo Selecionado", "ModifierKey", "ModifierActive")
+CreateToggle(tabMovement, "Ativar Modo Selecionado", "ModifierActive", "ModifierActive")
 CreateToggle(tabMovement, "Auto Speed Switch", nil, "AutoSpeedSwitch")
 CreateToggle(tabMovement, "Auto Left", "AutoLeft", "AutoLeft")
 CreateToggle(tabMovement, "Auto Right", "AutoRight", "AutoRight")
@@ -3178,7 +3184,7 @@ CreateMobileVisToggle(tabMobile, "Mostrar Insta Prompt", "InstaPrompt")
 CreateMobileVisToggle(tabMobile, "Mostrar Auto Interact", "AutoInteract")
 CreateMobileVisToggle(tabMobile, "Mostrar Auto Left", "AutoLeft")
 CreateMobileVisToggle(tabMobile, "Mostrar Auto Right", "AutoRight")
-CreateMobileVisToggle(tabMobile, "Mostrar Botão Ativar", "ModifierKey")
+CreateMobileVisToggle(tabMobile, "Mostrar Botão Ativar", "ModifierActive")
 
 CreateInput(tabSettings, "Speed Boost Value", "SpeedBoost")
 CreateInput(tabSettings, "Carry Mode Value", "CarryMode")
@@ -3618,7 +3624,13 @@ task.spawn(function()
         pcall(function()
             local data = HttpService:JSONDecode(readfile(AutoSavePath))
             if data.Values then for k, v in pairs(data.Values) do State.Values[k] = v if InputUpdaters[k] then InputUpdaters[k](v) end end end
-            if data.Binds then for k, v in pairs(data.Binds) do pcall(function() State.Binds[k] = Enum.KeyCode[v] end) end atualizarTextosDosBotoes() end
+            if data.Binds then 
+                for k, v in pairs(data.Binds) do 
+                    -- Só carrega a bind se ela existir nativamente no código atual (trava o bug da Velocity)
+                    if State.Binds[k] ~= nil then pcall(function() State.Binds[k] = Enum.KeyCode[v] end) end 
+                end 
+                atualizarTextosDosBotoes() 
+            end
             if data.MobilePositions then for k, v in pairs(data.MobilePositions) do State.MobilePositions[k] = v end end
             if data.MobileVis ~= nil then for k, v in pairs(data.MobileVis) do State.MobileVis[k] = v end end
             if data.IsMinimized ~= nil then ExecMinimize(data.IsMinimized) end

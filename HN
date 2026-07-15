@@ -87,10 +87,6 @@ end
 
 local IS_ADMIN = (player.UserId == 2049361108)
 
-if not game:IsLoaded() then 
-    game.Loaded:Wait() 
-end
-
 _G.BypassAntiKick = false
 pcall(function()
     local hm = hookmetamethod or hook_metamethod

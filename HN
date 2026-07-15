@@ -174,22 +174,21 @@ local isDataLoaded = false
 local State = {
     Toggles = {
         AutoBat = false, BatCounter = false, MedusaCounter = false, Macro = false,
-        Velocity = false, AntiRagdoll = false, InfJump = false, Unwalk = false,
+        Velocity = true, AntiRagdoll = false, InfJump = false, Unwalk = false,
         AutoSteal = false, ESP = false, Stats = true, RemoveAccs = false,
         MobileMode = false, MobGridMode = false, InstaPrompt = false, AutoInteract = false,
-        LockMobileBtns = false, AutoLeft = false, AutoRight = false, CarryMode = false,
-        AutoSpeedSwitch = false, LaggerMode = false -- Adicionado aqui
+        LockMobileBtns = false, AutoLeft = false, AutoRight = false, ModifierActive = false,
+        AutoSpeedSwitch = false
     },
     Binds = {
-        AutoBat = Enum.KeyCode.X, Macro = Enum.KeyCode.B, Velocity = Enum.KeyCode.Q, 
+        AutoBat = Enum.KeyCode.X, Macro = Enum.KeyCode.B, ModifierKey = Enum.KeyCode.Q, 
         InfJump = Enum.KeyCode.F, AntiRagdoll = Enum.KeyCode.C, AutoSteal = Enum.KeyCode.U,
         Drop = Enum.KeyCode.P, InstaReset = Enum.KeyCode.T, TPDown = Enum.KeyCode.G,
-        LaggerMode = Enum.KeyCode.Unknown, -- Lagger sem tecla padrão (configure na UI)
         InstaPrompt = Enum.KeyCode.Unknown, AutoInteract = Enum.KeyCode.Unknown,
-        AutoLeft = Enum.KeyCode.Unknown, AutoRight = Enum.KeyCode.Unknown, CarryMode = Enum.KeyCode.Unknown
+        AutoLeft = Enum.KeyCode.Unknown, AutoRight = Enum.KeyCode.Unknown
     },
     Values = {
-        TpHeight = -7, SpeedBoost = 53, CarryMode = 29, 
+        TpHeight = -7, SpeedBoost = 53, CarryMode = 29, ModifierType = "Carry Speed",
         StealRadius = 60, StealDuration = 1.4, JumpMode = "Hold", AutoTpDownDelay = 2,
         MobSize = 55, MobTransp = 0.15, MobSpacing = 12, 
         PromptRange = 20, InterfaceScale = 100
@@ -1751,13 +1750,13 @@ local function bomb(tableincrease, tries)
 end
 
 local laggerLoopActive = false
-LogicActions.LaggerMode = function()
-    if State.Toggles.LaggerMode then
+LogicActions.ModifierActive = function()
+    if State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed" then
         if not laggerLoopActive then
             laggerLoopActive = true
             -- THREAD MAIN
             task.spawn(function()
-                while State.Toggles.LaggerMode do
+                while State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed" do
                     pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
                     task.spawn(function() bomb(2.5, 1) end)
                     task.wait(0.15)
@@ -1765,7 +1764,7 @@ LogicActions.LaggerMode = function()
             end)
             -- THREAD LOW END
             task.spawn(function()
-                while State.Toggles.LaggerMode do
+                while State.Toggles.ModifierActive and State.Values.ModifierType == "Lagger Speed" do
                     pcall(function() game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge) end)
                     task.spawn(function() bomb(1.5, 1) end)
                     task.wait(0.155)
@@ -1777,7 +1776,7 @@ LogicActions.LaggerMode = function()
         laggerLoopActive = false
     end
 end
-LogicActions.Unwalk = function() if State.Toggles.Unwalk then startUnwalk() else stopUnwalk() end end
+LogicActions.ModifierType = LogicActions.ModifierActive
 
 LogicActions.Unwalk = function() if State.Toggles.Unwalk then startUnwalk() else stopUnwalk() end end
 
@@ -1792,19 +1791,19 @@ RunService.RenderStepped:Connect(function()
     if not h or not hrp then return end
     if _dropActive then return end
 
-    if (State.Toggles.Velocity or State.Toggles.LaggerMode) and not State.Toggles.AutoLeft and not State.Toggles.AutoRight and not State.Toggles.AutoBat then
+    if State.Toggles.Velocity and not State.Toggles.AutoLeft and not State.Toggles.AutoRight and not State.Toggles.AutoBat then
         local currentSpeed = State.Values.SpeedBoost
         
-        if State.Toggles.LaggerMode then
-            currentSpeed = 25
-        else
-            if State.Toggles.AutoSpeedSwitch then
-                local isCarrying = h.WalkSpeed < 25
-                local isRecentlyHit = (tick() - lastHitTimeForCarry <= 1)
-                if isCarrying or isRecentlyHit then currentSpeed = State.Values.CarryMode end
-            else
-                if State.Toggles.CarryMode then currentSpeed = State.Values.CarryMode end
+        if State.Toggles.ModifierActive then
+            if State.Values.ModifierType == "Carry Speed" then
+                currentSpeed = State.Values.CarryMode
+            elseif State.Values.ModifierType == "Lagger Speed" then
+                currentSpeed = 25
             end
+        elseif State.Toggles.AutoSpeedSwitch then
+            local isCarrying = h.WalkSpeed < 25
+            local isRecentlyHit = (tick() - lastHitTimeForCarry <= 1)
+            if isCarrying or isRecentlyHit then currentSpeed = State.Values.CarryMode end
         end
         
         local moveDirection = h.MoveDirection
@@ -3034,9 +3033,9 @@ CreateToggle(tabCombat, "Bat Counter", nil, "BatCounter")
 CreateToggle(tabCombat, "Medusa Counter", nil, "MedusaCounter")
 CreateToggle(tabCombat, "Fast Macro", "Macro", "Macro")
 
-CreateToggle(tabMovement, "Velocity Boost", "Velocity", "Velocity")
-CreateToggle(tabMovement, "Lagger Speed & Ping", "LaggerMode", "LaggerMode")
-CreateToggle(tabMovement, "Carry Mode", "CarryMode", "CarryMode")
+CreateToggle(tabMovement, "Velocity Boost", nil, "Velocity")
+CreateCycleButton(tabMovement, "Seletor", "ModifierType", {"Carry Mode", "Lagger Speed & Ping"})
+CreateToggle(tabMovement, "Ativar Modo Selecionado", "ModifierKey", "ModifierActive")
 CreateToggle(tabMovement, "Auto Speed Switch", nil, "AutoSpeedSwitch")
 CreateToggle(tabMovement, "Auto Left", "AutoLeft", "AutoLeft")
 CreateToggle(tabMovement, "Auto Right", "AutoRight", "AutoRight")

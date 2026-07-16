@@ -2634,7 +2634,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
         end
     end
     
-    if gpe or UserInputService:GetFocusedTextBox() then return end 
+    if UserInputService:GetFocusedTextBox() then return end 
     
     for keyName, keyCode in pairs(State.Binds) do
         if input.KeyCode == keyCode and keyCode ~= Enum.KeyCode.Unknown then
@@ -3271,6 +3271,8 @@ CreateMobileVisToggle(tabMobile, "Mostrar Lag Carry", "LaggerCarry")
 
 CreateInput(tabSettings, "Speed Boost Value", "SpeedBoost")
 CreateInput(tabSettings, "Carry Mode Value", "CarryMode")
+CreateInput(tabSettings, "Lagger Speed Value", "LaggerSpeed")
+CreateInput(tabSettings, "Lagger Carry Speed Value", "LaggerCarrySpeed")
 CreateInput(tabSettings, "TP Height", "TpHeight")
 CreateInput(tabSettings, "Steal Radius", "StealRadius")
 CreateInput(tabSettings, "Steal Duration", "StealDuration")

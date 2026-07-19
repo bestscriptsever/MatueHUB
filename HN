@@ -68,13 +68,11 @@ end
 -- ============================================================
 local IDs_Permitidos = {
     [2049361108] = true, -- ADMIN EXCLUSIVO
-    [10519600803] = true, -- Daviferreira
     [9131051689] = true, -- guilherme067k
     [6178386075] = true, -- Hakin
     [5491260413] = true, -- GUILHERME_0644
     [9476297444] = true, -- GUILHERME123456G55
     [4392089033] = true, -- Marivaldo
-    [8970860435] = true, -- Xdragon alt
     [10789766716] = true, -- king sabezz
     [1644360466] = true, -- Novo usuario
     [5088967382] = true  -- Novo usuario
